@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { LevelConfig, Position, Direction, GameState } from './types';
 
 export const useSokoban = (level: LevelConfig) => {
@@ -7,12 +7,15 @@ export const useSokoban = (level: LevelConfig) => {
     boxes: level.boxes,
   });
 
+  const historyRef = useRef<GameState[]>([]);
+
   // Reset game state when level changes
   useEffect(() => {
     setGameState({
       player: level.initialPlayer,
       boxes: level.boxes,
     });
+    historyRef.current = [];
   }, [level]);
 
   const isWon = level.goals.every(g => gameState.boxes.some(b => b.x === g.x && b.y === g.y));
@@ -59,6 +62,7 @@ export const useSokoban = (level: LevelConfig) => {
         // Move box
         const newBoxes = [...boxes];
         newBoxes[boxIndex] = newBoxPos;
+        historyRef.current.push(prev);
         return {
           player: newPlayerPos,
           boxes: newBoxes,
@@ -66,6 +70,7 @@ export const useSokoban = (level: LevelConfig) => {
       }
 
       // Just moving player
+      historyRef.current.push(prev);
       return {
         ...prev,
         player: newPlayerPos,
@@ -78,12 +83,21 @@ export const useSokoban = (level: LevelConfig) => {
       player: level.initialPlayer,
       boxes: level.boxes,
     });
+    historyRef.current = [];
   }, [level]);
+
+  const undo = useCallback(() => {
+    if (historyRef.current.length > 0) {
+      const lastState = historyRef.current.pop()!;
+      setGameState(lastState);
+    }
+  }, []);
 
   return {
     gameState,
     move,
     reset,
+    undo,
     isWon,
   };
 };

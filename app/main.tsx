@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
@@ -16,6 +16,7 @@ import { Dpad } from "@/components/game/Dpad";
 import { useSokoban } from "@/components/game/useSokoban";
 import { LevelConfig } from "@/components/game/types";
 import { LEVELS } from "@/assets/levels";
+import { MaterialIcons } from "@expo/vector-icons";
 
 const INITIAL_LEVEL = LEVELS[0];
 
@@ -24,6 +25,7 @@ export default function HomeScreen() {
   const { levelData } = useLocalSearchParams();
   const [level, setLevel] = useState<LevelConfig | null>(null);
   const [loading, setLoading] = useState(false);
+  const [winDismissed, setWinDismissed] = useState(false);
 
   useEffect(() => {
     if (levelData) {
@@ -60,8 +62,14 @@ export default function HomeScreen() {
 
   const handleNext = () => {
     if (safeLevel && safeLevel.levelNumber) {
+      setWinDismissed(false);
       fetchLevel(safeLevel.levelNumber + 1);
     }
+  };
+
+  const handleReset = () => {
+    setWinDismissed(false);
+    reset();
   };
 
   // Safe fallback for hook
@@ -69,21 +77,30 @@ export default function HomeScreen() {
   const { gameState, move, reset, undo, isWon, lastMove } =
     useSokoban(safeLevel);
 
+  const safeMove = useCallback(
+    (direction: "up" | "down" | "left" | "right") => {
+      if (!isWon) {
+        move(direction);
+      }
+    },
+    [move, isWon]
+  );
+
   useEffect(() => {
     if (Platform.OS === "web") {
       const handleKeyDown = (event: KeyboardEvent) => {
         switch (event.key.toLowerCase()) {
           case "w":
-            move("up");
+            safeMove("up");
             break;
           case "a":
-            move("left");
+            safeMove("left");
             break;
           case "s":
-            move("down");
+            safeMove("down");
             break;
           case "d":
-            move("right");
+            safeMove("right");
             break;
           case "q":
             reset();
@@ -99,7 +116,7 @@ export default function HomeScreen() {
         window.removeEventListener("keydown", handleKeyDown);
       };
     }
-  }, [move, reset, undo]);
+  }, [safeMove, reset, undo]);
 
   if (loading) {
     return (
@@ -121,17 +138,36 @@ export default function HomeScreen() {
           lastMove={lastMove}
         />
       </View>
-      {isWon && (
-        <View style={styles.winContainer}>
-          <Text style={styles.winText}>You Win!</Text>
-          <TouchableOpacity onPress={handleNext} style={styles.nextButton}>
-            <Text style={styles.nextButtonText}>Next Level</Text>
-          </TouchableOpacity>
+      <Dpad onMove={safeMove} />
+      {isWon && !winDismissed && (
+        <View style={styles.winOverlay}>
+          <View style={styles.winContainer}>
+            <TouchableOpacity
+              onPress={() => setWinDismissed(true)}
+              style={styles.closeButton}
+            >
+              <Text style={styles.closeButtonText}>X</Text>
+            </TouchableOpacity>
+            <Text style={styles.winText}>You Win!</Text>
+            <View style={styles.winButtons}>
+              <TouchableOpacity onPress={handleReset} style={styles.replayButton}>
+                <View style={styles.replayButtonContent}>
+                  <Text style={styles.replayButtonText}>Replay</Text>
+                  <MaterialIcons name="replay" size={18} color="white" />
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleNext} style={styles.nextButton}>
+                <View style={styles.nextButtonContent}>
+                  <Text style={styles.nextButtonText}>Next Level</Text>
+                  <MaterialIcons name="arrow-forward" size={18} color="white" />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       )}
-      <Dpad onMove={move} />
       <View style={styles.buttonContainer}>
-        <TouchableOpacity onPress={reset} style={styles.resetButton}>
+        <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
           <Text style={styles.resetButtonText}>Reset Level</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={undo} style={styles.undoButton}>
@@ -216,15 +252,69 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
+  winOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+  },
   winContainer: {
     alignItems: "center",
-    marginBottom: 20,
+    padding: 30,
+    backgroundColor: "#2a2a2a",
+    borderRadius: 16,
+    position: "relative",
+    minWidth: 200,
+  },
+  closeButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 30,
+    height: 30,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButtonText: {
+    color: "#888",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  winButtons: {
+    flexDirection: "column",
+    gap: 15,
+    marginTop: 20,
+  },
+  replayButton: {
+    backgroundColor: "#555",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  replayButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  replayButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
   },
   nextButton: {
     backgroundColor: "#4CAF50",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
+  },
+  nextButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   nextButtonText: {
     color: "white",

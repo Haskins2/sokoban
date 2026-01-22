@@ -17,6 +17,7 @@ import { useSokoban } from "@/components/game/useSokoban";
 import { LevelConfig } from "@/components/game/types";
 import { LEVELS } from "@/assets/levels";
 import { MaterialIcons } from "@expo/vector-icons";
+import { UserMenu } from "@/components/UserMenu";
 
 const INITIAL_LEVEL = LEVELS[0];
 
@@ -134,6 +135,7 @@ export default function HomeScreen() {
       >
         <MaterialIcons name="home" size={32} color="white" />
       </TouchableOpacity>
+      <UserMenu />
       <Text style={styles.title}>
         Sokoban {safeLevel.levelNumber ? `#${safeLevel.levelNumber}` : ""}
       </Text>

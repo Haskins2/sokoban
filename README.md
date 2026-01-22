@@ -1,8 +1,8 @@
-# Welcome to your Expo app 👋
+# Sokoban
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A daily Sokoban puzzle game built with Expo and React Native. Challenge yourself to find the optimal solution for each level.
 
-## Get started
+## Getting Started
 
 1. Install dependencies
 
@@ -16,35 +16,43 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+## Project Structure
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+sokoban/
+├── app/                    # Expo Router screens
+│   ├── _layout.tsx         # Root navigation layout
+│   ├── main.tsx            # Main game screen
+│   ├── level_select.tsx    # Level selection screen
+│   ├── level_editor.tsx    # Level editor screen
+│   └── modal.tsx           # Modal screen
+├── assets/
+│   ├── images/             # App icons and images
+│   ├── levels/             # Level data (JSON files)
+│   └── soko_images/        # Game sprites (wall, floor, box)
+├── components/
+│   ├── game/               # Game-specific components
+│   │   ├── SokobanBoard.tsx    # Main game board renderer
+│   │   ├── Dpad.tsx            # Directional pad controls
+│   │   ├── useSokoban.ts       # Game logic hook
+│   │   └── types.ts            # TypeScript types for game
+│   ├── themed-text.tsx     # Themed text component
+│   └── themed-view.tsx     # Themed view component
+├── constants/
+│   └── theme.ts            # App theme configuration
+├── hooks/                  # Custom React hooks
+│   ├── use-color-scheme.ts
+│   └── use-theme-color.ts
+├── scripts/
+│   ├── save_level.js       # Script to save levels
+│   ├── server.js           # Development server
+│   └── reset-project.js    # Project reset utility
+└── firebaseConfig.ts       # Firebase configuration
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Features
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- Multiple puzzle levels
+- Level editor for creating custom puzzles
+- Optimal solution challenge
+- Touch-based D-pad controls

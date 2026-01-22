@@ -1,11 +1,15 @@
-import { useState, useCallback, useEffect } from 'react';
-import { LevelConfig, Position, Direction, GameState } from './types';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { LevelConfig, Position, Direction, GameState, MoveSequence } from './types';
 
 export const useSokoban = (level: LevelConfig) => {
   const [gameState, setGameState] = useState<GameState>({
     player: level.initialPlayer,
     boxes: level.boxes,
   });
+  const [isMoving, setIsMoving] = useState(false);
+  const [lastMove, setLastMove] = useState<MoveSequence | null>(null);
+
+  const historyRef = useRef<GameState[]>([]);
 
   // Reset game state when level changes
   useEffect(() => {
@@ -13,9 +17,12 @@ export const useSokoban = (level: LevelConfig) => {
       player: level.initialPlayer,
       boxes: level.boxes,
     });
+    setIsMoving(false);
+    setLastMove(null);
+    historyRef.current = [];
   }, [level]);
 
-  const isWon = level.goals.every(g => gameState.boxes.some(b => b.x === g.x && b.y === g.y));
+  const isWon = !isMoving && level.goals.every(g => gameState.boxes.some(b => b.x === g.x && b.y === g.y));
 
   const isWall = useCallback((pos: Position) => {
     return level.walls.some(w => w.x === pos.x && w.y === pos.y);
@@ -26,23 +33,34 @@ export const useSokoban = (level: LevelConfig) => {
   }, []);
 
   const move = useCallback((direction: Direction) => {
-    setGameState((prev: GameState) => {
-      const { player, boxes } = prev;
-      let dx = 0;
-      let dy = 0;
+    if (isMoving) return;
+    
+    let currentState = { ...gameState };
+    const startState = { ...gameState };
+    
+    const playerPath = [currentState.player];
+    let boxMovedIndex = -1;
+    const boxPath: Position[] = [];
 
-      switch (direction) {
-        case 'up': dy = -1; break;
-        case 'down': dy = 1; break;
-        case 'left': dx = -1; break;
-        case 'right': dx = 1; break;
-      }
+    let dx = 0;
+    let dy = 0;
 
+    switch (direction) {
+      case 'up': dy = -1; break;
+      case 'down': dy = 1; break;
+      case 'left': dx = -1; break;
+      case 'right': dx = 1; break;
+    }
+
+    let moved = false;
+
+    while (true) {
+      const { player, boxes } = currentState;
       const newPlayerPos = { x: player.x + dx, y: player.y + dy };
 
       // Check wall collision for player
       if (isWall(newPlayerPos)) {
-        return prev;
+        break;
       }
 
       // Check box collision
@@ -53,37 +71,78 @@ export const useSokoban = (level: LevelConfig) => {
 
         // Check if box can move (not into wall or another box)
         if (isWall(newBoxPos) || getBoxIndex(newBoxPos, boxes) !== -1) {
-          return prev;
+          break;
         }
 
         // Move box
         const newBoxes = [...boxes];
         newBoxes[boxIndex] = newBoxPos;
-        return {
+        
+        if (boxMovedIndex === -1) {
+            boxMovedIndex = boxIndex;
+            boxPath.push(boxes[boxIndex]); // Add start pos
+        }
+        boxPath.push(newBoxPos);
+
+        currentState = {
           player: newPlayerPos,
           boxes: newBoxes,
         };
+      } else {
+        // Just moving player
+        currentState = {
+          ...currentState,
+          player: newPlayerPos,
+        };
       }
 
-      // Just moving player
-      return {
-        ...prev,
-        player: newPlayerPos,
-      };
-    });
-  }, [isWall, getBoxIndex]);
+      playerPath.push(currentState.player);
+      moved = true;
+    }
+
+    if (moved) {
+      historyRef.current.push(startState);
+      setGameState(currentState);
+      setLastMove({
+        direction,
+        playerPath,
+        boxMoved: boxMovedIndex !== -1 ? { index: boxMovedIndex, path: boxPath } : undefined
+      });
+      
+      setIsMoving(true);
+      // Calculate duration based on steps
+      // 50ms per step
+      const duration = (playerPath.length - 1) * 25;
+      setTimeout(() => setIsMoving(false), duration);
+    }
+  }, [gameState, isMoving, isWall, getBoxIndex]);
 
   const reset = useCallback(() => {
+    if (isMoving) return;
     setGameState({
       player: level.initialPlayer,
       boxes: level.boxes,
     });
-  }, [level]);
+    setLastMove(null);
+    historyRef.current = [];
+  }, [level, isMoving]);
+
+  const undo = useCallback(() => {
+    if (isMoving) return;
+    if (historyRef.current.length > 0) {
+      const lastState = historyRef.current.pop()!;
+      setGameState(lastState);
+      setLastMove(null); // Clear animation on undo
+    }
+  }, [isMoving]);
 
   return {
     gameState,
     move,
     reset,
+    undo,
     isWon,
+    isMoving,
+    lastMove,
   };
 };

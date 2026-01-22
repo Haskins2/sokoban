@@ -4,9 +4,13 @@ import {
   Text,
   TouchableOpacity,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
-import { useEffect } from "react";
-import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig";
 import { SokobanBoard } from "@/components/game/SokobanBoard";
 import { Dpad } from "@/components/game/Dpad";
 import { useSokoban } from "@/components/game/useSokoban";
@@ -17,7 +21,53 @@ const INITIAL_LEVEL = LEVELS[0];
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { gameState, move, reset, undo, isWon } = useSokoban(INITIAL_LEVEL);
+  const { levelData } = useLocalSearchParams();
+  const [level, setLevel] = useState<LevelConfig | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (levelData) {
+      try {
+        const parsed = JSON.parse(levelData as string);
+        setLevel(parsed);
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      // Fallback to level 1 from Firestore if no param
+      fetchLevel(1);
+    }
+  }, [levelData]);
+
+  const fetchLevel = async (num: number) => {
+    setLoading(true);
+    try {
+      const docRef = doc(db, "levels", `level_${num}`);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        setLevel(snap.data() as LevelConfig);
+      } else {
+        Alert.alert("Finished", "No more levels!");
+        // If we were trying to go next, maybe stay on current?
+        // If initial load failed, maybe go to editor?
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNext = () => {
+    if (safeLevel && safeLevel.levelNumber) {
+      fetchLevel(safeLevel.levelNumber + 1);
+    }
+  };
+
+  // Safe fallback for hook
+  const safeLevel = level || INITIAL_LEVEL;
+  const { gameState, move, reset, undo, isWon, lastMove } =
+    useSokoban(safeLevel);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -51,13 +101,34 @@ export default function HomeScreen() {
     }
   }, [move, reset, undo]);
 
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sokoban</Text>
+      <Text style={styles.title}>
+        Sokoban {safeLevel.levelNumber ? `#${safeLevel.levelNumber}` : ""}
+      </Text>
       <View style={styles.gameContainer}>
-        <SokobanBoard level={INITIAL_LEVEL} gameState={gameState} />
+        <SokobanBoard
+          level={safeLevel}
+          gameState={gameState}
+          lastMove={lastMove}
+        />
       </View>
-      {isWon && <Text style={styles.winText}>You Win!</Text>}
+      {isWon && (
+        <View style={styles.winContainer}>
+          <Text style={styles.winText}>You Win!</Text>
+          <TouchableOpacity onPress={handleNext} style={styles.nextButton}>
+            <Text style={styles.nextButtonText}>Next Level</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       <Dpad onMove={move} />
       <View style={styles.buttonContainer}>
         <TouchableOpacity onPress={reset} style={styles.resetButton}>
@@ -67,12 +138,20 @@ export default function HomeScreen() {
           <Text style={styles.undoButtonText}>Undo</Text>
         </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        onPress={() => router.push("/level_editor")}
-        style={styles.editorButton}
-      >
-        <Text style={styles.editorButtonText}>Level Editor</Text>
-      </TouchableOpacity>
+      <View style={styles.navButtons}>
+        <TouchableOpacity
+          onPress={() => router.push("/level_select")}
+          style={styles.navButton}
+        >
+          <Text style={styles.navButtonText}>Select Level</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => router.push("/level_editor")}
+          style={styles.navButton}
+        >
+          <Text style={styles.navButtonText}>Level Editor</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -135,6 +214,35 @@ const styles = StyleSheet.create({
   editorButtonText: {
     color: "white",
     fontSize: 16,
+    fontWeight: "bold",
+  },
+  winContainer: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  nextButton: {
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  nextButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  navButtons: {
+    flexDirection: "row",
+    marginTop: 20,
+    gap: 10,
+  },
+  navButton: {
+    padding: 10,
+    backgroundColor: "#2196F3",
+    borderRadius: 8,
+  },
+  navButtonText: {
+    color: "white",
     fontWeight: "bold",
   },
 });

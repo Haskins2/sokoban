@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -12,9 +12,8 @@ import {
   Platform,
 } from "react-native";
 import { Stack } from "expo-router";
-import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
-import * as Clipboard from "expo-clipboard";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig";
 import { LevelConfig, Position } from "@/components/game/types";
 
 // Re-using images from SokobanBoard (assuming they are at these paths)
@@ -36,6 +35,18 @@ export default function LevelEditor() {
   const [selectedTool, setSelectedTool] = useState<Tool>("wall");
   const [statusMsg, setStatusMsg] = useState("");
 
+  // New state for dragging
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragAction, setDragAction] = useState<"add" | "remove">("add");
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      const handleGlobalUp = () => setIsDragging(false);
+      window.addEventListener("pointerup", handleGlobalUp);
+      return () => window.removeEventListener("pointerup", handleGlobalUp);
+    }
+  }, []);
+
   const [walls, setWalls] = useState<Position[]>([]);
   const [boxes, setBoxes] = useState<Position[]>([]);
   const [goals, setGoals] = useState<Position[]>([]);
@@ -46,6 +57,89 @@ export default function LevelEditor() {
 
   const removeAt = (x: number, y: number, arr: Position[]) =>
     arr.filter((p) => p.x !== x || p.y !== y);
+
+  const paintTile = (x: number, y: number, action: "add" | "remove") => {
+    switch (selectedTool) {
+      case "wall":
+        if (action === "add") {
+          setWalls((prev) => {
+            if (isAt(x, y, prev)) return prev;
+            return [...prev, { x, y }];
+          });
+          setBoxes((prev) => removeAt(x, y, prev));
+          setGoals((prev) => removeAt(x, y, prev));
+          setPlayer((prev) => (prev?.x === x && prev?.y === y ? null : prev));
+        } else {
+          setWalls((prev) => removeAt(x, y, prev));
+        }
+        break;
+      case "floor":
+        setWalls((prev) => removeAt(x, y, prev));
+        setBoxes((prev) => removeAt(x, y, prev));
+        setGoals((prev) => removeAt(x, y, prev));
+        setPlayer((prev) => (prev?.x === x && prev?.y === y ? null : prev));
+        break;
+      case "box":
+        setWalls((prev) => removeAt(x, y, prev));
+        setPlayer((prev) => (prev?.x === x && prev?.y === y ? null : prev));
+        if (action === "add") {
+          setBoxes((prev) => {
+            if (isAt(x, y, prev)) return prev;
+            return [...prev, { x, y }];
+          });
+        } else {
+          setBoxes((prev) => removeAt(x, y, prev));
+        }
+        break;
+      case "goal":
+        setWalls((prev) => removeAt(x, y, prev));
+        if (action === "add") {
+          setGoals((prev) => {
+            if (isAt(x, y, prev)) return prev;
+            return [...prev, { x, y }];
+          });
+        } else {
+          setGoals((prev) => removeAt(x, y, prev));
+        }
+        break;
+      case "player":
+        setWalls((prev) => removeAt(x, y, prev));
+        setBoxes((prev) => removeAt(x, y, prev));
+        if (action === "add") {
+          setPlayer({ x, y });
+        } else {
+          setPlayer((prev) => (prev?.x === x && prev?.y === y ? null : prev));
+        }
+        break;
+      case "delete":
+        setWalls((prev) => removeAt(x, y, prev));
+        setBoxes((prev) => removeAt(x, y, prev));
+        setGoals((prev) => removeAt(x, y, prev));
+        setPlayer((prev) => (prev?.x === x && prev?.y === y ? null : prev));
+        break;
+    }
+  };
+
+  const handlePointerDown = (x: number, y: number) => {
+    setIsDragging(true);
+    let action: "add" | "remove" = "add";
+
+    if (selectedTool === "wall" && isAt(x, y, walls)) action = "remove";
+    else if (selectedTool === "box" && isAt(x, y, boxes)) action = "remove";
+    else if (selectedTool === "goal" && isAt(x, y, goals)) action = "remove";
+    else if (selectedTool === "player" && player?.x === x && player?.y === y)
+      action = "remove";
+    else if (selectedTool === "delete") action = "remove";
+
+    setDragAction(action);
+    paintTile(x, y, action);
+  };
+
+  const handlePointerEnter = (x: number, y: number) => {
+    if (isDragging) {
+      paintTile(x, y, dragAction);
+    }
+  };
 
   const handleTilePress = (x: number, y: number) => {
     switch (selectedTool) {
@@ -103,7 +197,7 @@ export default function LevelEditor() {
     }
   };
 
-  const saveLevel = async () => {
+  const saveLevel = async (force = false) => {
     console.log("saveLevel: Function called");
     setStatusMsg("Saving...");
     if (!player) {
@@ -122,66 +216,61 @@ export default function LevelEditor() {
       initialPlayer: player,
     };
 
-    const json = JSON.stringify(levelConfig, null, 2);
-    console.log("saveLevel: JSON generated", json);
+    const docId = `level_${levelNumber}`;
+    const docRef = doc(db, "levels", docId);
 
-    // Copy to clipboard
+    if (!force) {
+      try {
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          if (Platform.OS === "web") {
+            if (
+              window.confirm(`Level ${levelNumber} already exists. Overwrite?`)
+            ) {
+              saveLevel(true);
+            } else {
+              setStatusMsg("Save cancelled");
+            }
+          } else {
+            Alert.alert(
+              "Overwrite?",
+              `Level ${levelNumber} already exists. Overwrite?`,
+              [
+                {
+                  text: "Cancel",
+                  onPress: () => setStatusMsg("Save cancelled"),
+                  style: "cancel",
+                },
+                { text: "Overwrite", onPress: () => saveLevel(true) },
+              ]
+            );
+          }
+          return;
+        }
+      } catch (e) {
+        console.error("Error checking document: ", e);
+        setStatusMsg("Error checking level existence");
+        return;
+      }
+    }
+
     try {
-      console.log("saveLevel: Attempting to copy to clipboard");
-      await Clipboard.setStringAsync(json);
-      console.log("saveLevel: Copied to clipboard");
-      setStatusMsg("Copied to clipboard!");
+      await setDoc(docRef, {
+        ...levelConfig,
+        levelNumber: parseInt(levelNumber),
+        createdAt: new Date(),
+      });
+      console.log("Document written with ID: ", docId);
+      setStatusMsg("Saved to Firestore!");
       if (Platform.OS === "web") {
-        window.alert(
-          "Level JSON copied to clipboard! Paste it into a file in assets/levels/."
-        );
+        window.alert("Level saved successfully to Firestore!");
       } else {
-        Alert.alert(
-          "Level Copied!",
-          "The level JSON has been copied to your clipboard. Create a new file in 'assets/levels/' and paste the content there."
-        );
+        Alert.alert("Success", "Level saved successfully to Firestore!");
       }
-    } catch (error) {
-      console.error("saveLevel: Clipboard error", error);
-      setStatusMsg("Error copying to clipboard");
-      Alert.alert(
-        "Error",
-        "Failed to copy to clipboard: " + (error as any).message
-      );
-    }
-
-    const fileName = `level_${levelNumber}.json`;
-
-    if (Platform.OS === "web") {
-      return;
-    }
-
-    // Use type assertion to avoid TS error if types are missing
-    const docDir = (FileSystem as any).documentDirectory;
-    console.log("saveLevel: Document directory", docDir);
-    if (!docDir) {
-      console.error("saveLevel: No document directory");
-      Alert.alert("Error", "Could not determine document directory");
-      return;
-    }
-    const fileUri = docDir + fileName;
-    console.log("saveLevel: File URI", fileUri);
-
-    try {
-      console.log("saveLevel: Writing file");
-      await FileSystem.writeAsStringAsync(fileUri, json);
-      console.log("saveLevel: File written");
-
-      if (await Sharing.isAvailableAsync()) {
-        console.log("saveLevel: Sharing file");
-        await Sharing.shareAsync(fileUri);
-      } else {
-        console.log("saveLevel: Sharing not available");
-        Alert.alert("Saved", `Level saved to ${fileUri}`);
-      }
-    } catch (error) {
-      console.error("saveLevel: File system error", error);
-      Alert.alert("Error", "Failed to save level: " + (error as any).message);
+    } catch (e) {
+      console.error("Error adding document: ", e);
+      setStatusMsg("Error saving to Firestore");
+      Alert.alert("Error", "Failed to save level to Firestore");
     }
   };
 
@@ -201,11 +290,27 @@ export default function LevelEditor() {
         const isGoal = isAt(x, y, goals);
         const isPlayer = player?.x === x && player?.y === y;
 
+        const tileProps =
+          Platform.OS === "web"
+            ? {
+                onPointerDown: (e: any) => {
+                  e.preventDefault();
+                  handlePointerDown(x, y);
+                },
+                onPointerEnter: (e: any) => {
+                  e.preventDefault();
+                  handlePointerEnter(x, y);
+                },
+              }
+            : {
+                onPress: () => handleTilePress(x, y),
+              };
+
         row.push(
           <TouchableOpacity
             key={`${x}-${y}`}
             style={[styles.tile, { width: tileSize, height: tileSize }]}
-            onPress={() => handleTilePress(x, y)}
+            {...tileProps}
           >
             <Image
               source={isWall ? IMAGES.wall : IMAGES.floor}
@@ -299,8 +404,7 @@ export default function LevelEditor() {
         {statusMsg ? <Text style={styles.statusText}>{statusMsg}</Text> : null}
 
         <Text style={styles.instruction}>
-          1. Click Save Level (copies to clipboard) 2. Run 'npm run save-level'
-          in terminal
+          Saves to Firestore 'levels' collection
         </Text>
       </View>
 

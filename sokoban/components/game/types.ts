@@ -12,9 +12,20 @@ export type LevelConfig = {
   boxes: Position[];
   goals: Position[];
   initialPlayer: Position;
+  levelNumber?: number;
 };
 
 export type GameState = {
   player: Position;
   boxes: Position[];
 };
+
+export type MoveSequence = {
+  direction: Direction;
+  playerPath: Position[];
+  boxMoved?: {
+    index: number;
+    path: Position[];
+  };
+};
+

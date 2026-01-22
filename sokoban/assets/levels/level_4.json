@@ -1,0 +1,21 @@
+{
+  "width": 8,
+  "height": 8,
+  "walls": [],
+  "boxes": [
+    {
+      "x": 4,
+      "y": 3
+    }
+  ],
+  "goals": [
+    {
+      "x": 7,
+      "y": 3
+    }
+  ],
+  "initialPlayer": {
+    "x": 1,
+    "y": 3
+  }
+}

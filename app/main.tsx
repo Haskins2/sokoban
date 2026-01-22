@@ -128,6 +128,12 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity
+        onPress={() => router.push("/home")}
+        style={styles.homeButton}
+      >
+        <MaterialIcons name="home" size={32} color="white" />
+      </TouchableOpacity>
       <Text style={styles.title}>
         Sokoban {safeLevel.levelNumber ? `#${safeLevel.levelNumber}` : ""}
       </Text>
@@ -198,6 +204,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#1a1a1a",
+  },
+  homeButton: {
+    position: "absolute",
+    top: 20,
+    left: 20,
+    padding: 10,
+    zIndex: 10,
   },
   title: {
     fontSize: 32,

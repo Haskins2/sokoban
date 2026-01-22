@@ -11,10 +11,11 @@ import {
   Dimensions,
   Platform,
 } from "react-native";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { LevelConfig, Position } from "@/components/game/types";
+import { MaterialIcons } from "@expo/vector-icons";
 
 // Re-using images from SokobanBoard (assuming they are at these paths)
 const IMAGES = {
@@ -29,6 +30,7 @@ const DEFAULT_WIDTH = 8;
 const DEFAULT_HEIGHT = 8;
 
 export default function LevelEditor() {
+  const router = useRouter();
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
   const [levelNumber, setLevelNumber] = useState("1");
@@ -339,6 +341,12 @@ export default function LevelEditor() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: "Level Editor" }} />
+      <TouchableOpacity
+        onPress={() => router.push("/home")}
+        style={styles.homeButton}
+      >
+        <MaterialIcons name="home" size={32} color="white" />
+      </TouchableOpacity>
 
       <View style={styles.sidebar}>
         <Text style={styles.label}>Level #</Text>
@@ -423,6 +431,13 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     backgroundColor: "#1a1a1a",
+  },
+  homeButton: {
+    position: "absolute",
+    top: 20,
+    left: 140,
+    padding: 10,
+    zIndex: 10,
   },
   sidebar: {
     width: 120,

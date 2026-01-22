@@ -11,6 +11,7 @@ import { useRouter } from "expo-router";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { LevelConfig } from "@/components/game/types";
+import { MaterialIcons } from "@expo/vector-icons";
 
 export default function LevelSelect() {
   const [levels, setLevels] = useState<any[]>([]);
@@ -54,6 +55,12 @@ export default function LevelSelect() {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity
+        onPress={() => router.push("/home")}
+        style={styles.homeButton}
+      >
+        <MaterialIcons name="home" size={32} color="white" />
+      </TouchableOpacity>
       <Text style={styles.title}>Select Level</Text>
       <FlatList
         data={levels}
@@ -77,6 +84,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#1a1a1a",
     padding: 20,
+  },
+  homeButton: {
+    position: "absolute",
+    top: 20,
+    left: 20,
+    padding: 10,
+    zIndex: 10,
   },
   title: {
     fontSize: 32,

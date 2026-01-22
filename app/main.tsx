@@ -16,6 +16,7 @@ import { Dpad } from "@/components/game/Dpad";
 import { useSokoban } from "@/components/game/useSokoban";
 import { LevelConfig } from "@/components/game/types";
 import { LEVELS } from "@/assets/levels";
+import { MaterialIcons } from "@expo/vector-icons";
 
 const INITIAL_LEVEL = LEVELS[0];
 
@@ -24,6 +25,7 @@ export default function HomeScreen() {
   const { levelData } = useLocalSearchParams();
   const [level, setLevel] = useState<LevelConfig | null>(null);
   const [loading, setLoading] = useState(false);
+  const [winDismissed, setWinDismissed] = useState(false);
 
   useEffect(() => {
     if (levelData) {
@@ -60,8 +62,14 @@ export default function HomeScreen() {
 
   const handleNext = () => {
     if (safeLevel && safeLevel.levelNumber) {
+      setWinDismissed(false);
       fetchLevel(safeLevel.levelNumber + 1);
     }
+  };
+
+  const handleReset = () => {
+    setWinDismissed(false);
+    reset();
   };
 
   // Safe fallback for hook
@@ -131,18 +139,35 @@ export default function HomeScreen() {
         />
       </View>
       <Dpad onMove={safeMove} />
-      {isWon && (
+      {isWon && !winDismissed && (
         <View style={styles.winOverlay}>
           <View style={styles.winContainer}>
-            <Text style={styles.winText}>You Win!</Text>
-            <TouchableOpacity onPress={handleNext} style={styles.nextButton}>
-              <Text style={styles.nextButtonText}>Next Level</Text>
+            <TouchableOpacity
+              onPress={() => setWinDismissed(true)}
+              style={styles.closeButton}
+            >
+              <Text style={styles.closeButtonText}>X</Text>
             </TouchableOpacity>
+            <Text style={styles.winText}>You Win!</Text>
+            <View style={styles.winButtons}>
+              <TouchableOpacity onPress={handleReset} style={styles.replayButton}>
+                <View style={styles.replayButtonContent}>
+                  <Text style={styles.replayButtonText}>Replay</Text>
+                  <MaterialIcons name="replay" size={18} color="white" />
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleNext} style={styles.nextButton}>
+                <View style={styles.nextButtonContent}>
+                  <Text style={styles.nextButtonText}>Next Level</Text>
+                  <MaterialIcons name="arrow-forward" size={18} color="white" />
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       )}
       <View style={styles.buttonContainer}>
-        <TouchableOpacity onPress={reset} style={styles.resetButton}>
+        <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
           <Text style={styles.resetButtonText}>Reset Level</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={undo} style={styles.undoButton}>
@@ -242,12 +267,54 @@ const styles = StyleSheet.create({
     padding: 30,
     backgroundColor: "#2a2a2a",
     borderRadius: 16,
+    position: "relative",
+    minWidth: 200,
+  },
+  closeButton: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 30,
+    height: 30,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButtonText: {
+    color: "#888",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  winButtons: {
+    flexDirection: "column",
+    gap: 15,
+    marginTop: 20,
+  },
+  replayButton: {
+    backgroundColor: "#555",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  replayButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  replayButtonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
   },
   nextButton: {
     backgroundColor: "#4CAF50",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
+  },
+  nextButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   nextButtonText: {
     color: "white",

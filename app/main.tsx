@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
@@ -69,21 +69,30 @@ export default function HomeScreen() {
   const { gameState, move, reset, undo, isWon, lastMove } =
     useSokoban(safeLevel);
 
+  const safeMove = useCallback(
+    (direction: "up" | "down" | "left" | "right") => {
+      if (!isWon) {
+        move(direction);
+      }
+    },
+    [move, isWon]
+  );
+
   useEffect(() => {
     if (Platform.OS === "web") {
       const handleKeyDown = (event: KeyboardEvent) => {
         switch (event.key.toLowerCase()) {
           case "w":
-            move("up");
+            safeMove("up");
             break;
           case "a":
-            move("left");
+            safeMove("left");
             break;
           case "s":
-            move("down");
+            safeMove("down");
             break;
           case "d":
-            move("right");
+            safeMove("right");
             break;
           case "q":
             reset();
@@ -99,7 +108,7 @@ export default function HomeScreen() {
         window.removeEventListener("keydown", handleKeyDown);
       };
     }
-  }, [move, reset, undo]);
+  }, [safeMove, reset, undo]);
 
   if (loading) {
     return (
@@ -121,15 +130,17 @@ export default function HomeScreen() {
           lastMove={lastMove}
         />
       </View>
+      <Dpad onMove={safeMove} />
       {isWon && (
-        <View style={styles.winContainer}>
-          <Text style={styles.winText}>You Win!</Text>
-          <TouchableOpacity onPress={handleNext} style={styles.nextButton}>
-            <Text style={styles.nextButtonText}>Next Level</Text>
-          </TouchableOpacity>
+        <View style={styles.winOverlay}>
+          <View style={styles.winContainer}>
+            <Text style={styles.winText}>You Win!</Text>
+            <TouchableOpacity onPress={handleNext} style={styles.nextButton}>
+              <Text style={styles.nextButtonText}>Next Level</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
-      <Dpad onMove={move} />
       <View style={styles.buttonContainer}>
         <TouchableOpacity onPress={reset} style={styles.resetButton}>
           <Text style={styles.resetButtonText}>Reset Level</Text>
@@ -216,9 +227,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
+  winOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+  },
   winContainer: {
     alignItems: "center",
-    marginBottom: 20,
+    padding: 30,
+    backgroundColor: "#2a2a2a",
+    borderRadius: 16,
   },
   nextButton: {
     backgroundColor: "#4CAF50",

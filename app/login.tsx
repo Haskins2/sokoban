@@ -14,10 +14,11 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, signInWithGoogle } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -43,6 +44,18 @@ export default function LoginScreen() {
       Alert.alert("Login Failed", message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+      router.replace("/home");
+    } catch (error: any) {
+      Alert.alert("Google Sign-In Failed", "Failed to sign in with Google");
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -92,6 +105,27 @@ export default function LoginScreen() {
             <ActivityIndicator color="white" />
           ) : (
             <Text style={styles.loginButtonText}>Login</Text>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <TouchableOpacity
+          style={styles.googleButton}
+          onPress={handleGoogleSignIn}
+          disabled={googleLoading}
+        >
+          {googleLoading ? (
+            <ActivityIndicator color="#1a1a1a" />
+          ) : (
+            <>
+              <MaterialIcons name="login" size={20} color="#1a1a1a" />
+              <Text style={styles.googleButtonText}>Sign in with Google</Text>
+            </>
           )}
         </TouchableOpacity>
 
@@ -160,6 +194,35 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#444",
+  },
+  dividerText: {
+    color: "#888",
+    paddingHorizontal: 10,
+    fontSize: 14,
+  },
+  googleButton: {
+    backgroundColor: "white",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 10,
+  },
+  googleButtonText: {
+    color: "#1a1a1a",
+    fontSize: 16,
+    fontWeight: "600",
   },
   signupPrompt: {
     flexDirection: "row",

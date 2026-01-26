@@ -1,21 +1,46 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-
-// Mock user data - will be replaced with Firebase auth
-const MOCK_USER = {
-  username: "Player1",
-  email: "player@example.com",
-  profilePicture: null,
-  joinDate: "January 2026",
-  levelsCompleted: 5,
-  totalLevels: 10,
-  bestTime: "3:45",
-  totalPlayTime: "2h 30m",
-};
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace("/home");
+  };
+
+  const formatDate = (timestamp: string | undefined) => {
+    if (!timestamp) return "Unknown";
+    const date = new Date(timestamp);
+    return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  };
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
+          <MaterialIcons name="arrow-back" size={32} color="white" />
+        </TouchableOpacity>
+
+        <View style={styles.notLoggedIn}>
+          <MaterialIcons name="account-circle" size={80} color="#888" />
+          <Text style={styles.notLoggedInText}>You're not logged in</Text>
+          <TouchableOpacity
+            style={styles.loginButton}
+            onPress={() => router.push("/login")}
+          >
+            <Text style={styles.loginButtonText}>Login / Sign Up</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -29,8 +54,8 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <MaterialIcons name="account-circle" size={120} color="#4CAF50" />
-          <Text style={styles.username}>{MOCK_USER.username}</Text>
-          <Text style={styles.email}>{MOCK_USER.email}</Text>
+          <Text style={styles.username}>{user.displayName || "Player"}</Text>
+          <Text style={styles.email}>{user.email}</Text>
         </View>
 
         <View style={styles.section}>
@@ -38,48 +63,42 @@ export default function ProfileScreen() {
           <View style={styles.infoRow}>
             <MaterialIcons name="calendar-today" size={20} color="#888" />
             <Text style={styles.infoLabel}>Member Since:</Text>
-            <Text style={styles.infoValue}>{MOCK_USER.joinDate}</Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Statistics</Text>
-
-          <View style={styles.infoRow}>
-            <MaterialIcons name="check-circle" size={20} color="#4CAF50" />
-            <Text style={styles.infoLabel}>Levels Completed:</Text>
             <Text style={styles.infoValue}>
-              {MOCK_USER.levelsCompleted} / {MOCK_USER.totalLevels}
+              {formatDate(user.metadata.creationTime)}
             </Text>
           </View>
-
           <View style={styles.infoRow}>
-            <MaterialIcons name="timer" size={20} color="#888" />
-            <Text style={styles.infoLabel}>Best Time:</Text>
-            <Text style={styles.infoValue}>{MOCK_USER.bestTime}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <MaterialIcons name="access-time" size={20} color="#888" />
-            <Text style={styles.infoLabel}>Total Play Time:</Text>
-            <Text style={styles.infoValue}>{MOCK_USER.totalPlayTime}</Text>
+            <MaterialIcons name="verified-user" size={20} color={user.emailVerified ? "#4CAF50" : "#888"} />
+            <Text style={styles.infoLabel}>Email Verified:</Text>
+            <Text style={styles.infoValue}>
+              {user.emailVerified ? "Yes" : "No"}
+            </Text>
           </View>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Actions</Text>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => Alert.alert("Coming Soon", "Edit profile feature is coming soon!")}
+          >
             <MaterialIcons name="edit" size={20} color="white" />
             <Text style={styles.actionButtonText}>Edit Profile</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => Alert.alert("Coming Soon", "Settings feature is coming soon!")}
+          >
             <MaterialIcons name="settings" size={20} color="white" />
             <Text style={styles.actionButtonText}>Settings</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.actionButton, styles.logoutButton]}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.logoutButtonStyle]}
+            onPress={handleLogout}
+          >
             <MaterialIcons name="logout" size={20} color="white" />
             <Text style={styles.actionButtonText}>Logout</Text>
           </TouchableOpacity>
@@ -165,7 +184,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  logoutButton: {
+  logoutButtonStyle: {
     backgroundColor: "#d32f2f",
+  },
+  notLoggedIn: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  notLoggedInText: {
+    color: "#888",
+    fontSize: 18,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  loginButton: {
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 8,
+  },
+  loginButtonText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });

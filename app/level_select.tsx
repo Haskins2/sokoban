@@ -13,11 +13,13 @@ import { db } from "../firebaseConfig";
 import { LevelConfig } from "@/components/game/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import { UserMenu } from "@/components/UserMenu";
+import { useUserProgress } from "@/contexts/UserProgressContext";
 
 export default function LevelSelect() {
   const [levels, setLevels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { isLevelComplete } = useUserProgress();
 
   useEffect(() => {
     fetchLevels();
@@ -67,14 +69,23 @@ export default function LevelSelect() {
       <FlatList
         data={levels}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.levelItem}
-            onPress={() => handleLevelSelect(item)}
-          >
-            <Text style={styles.levelText}>Level {item.levelNumber}</Text>
-          </TouchableOpacity>
-        )}
+        renderItem={({ item }) => {
+          const completed = isLevelComplete(item.levelNumber);
+          return (
+            <TouchableOpacity
+              style={[
+                styles.levelItem,
+                completed && styles.levelItemCompleted,
+              ]}
+              onPress={() => handleLevelSelect(item)}
+            >
+              <Text style={styles.levelText}>Level {item.levelNumber}</Text>
+              {completed && (
+                <MaterialIcons name="check-circle" size={24} color="#4CAF50" />
+              )}
+            </TouchableOpacity>
+          );
+        }}
         contentContainerStyle={styles.listContent}
       />
     </View>
@@ -112,6 +123,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  levelItemCompleted: {
+    backgroundColor: "#2a4a2a",
+    borderWidth: 2,
+    borderColor: "#4CAF50",
   },
   levelText: {
     color: "white",

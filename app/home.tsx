@@ -2,9 +2,37 @@ import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { UserMenu } from "@/components/UserMenu";
+import { useUserProgress } from "@/contexts/UserProgressContext";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { getNextIncompleteLevel } = useUserProgress();
+
+  const handlePlayClick = async () => {
+    const nextLevel = getNextIncompleteLevel();
+
+    // Fetch the level data from Firestore
+    try {
+      const docRef = doc(db, "levels", `level_${nextLevel}`);
+      const snap = await getDoc(docRef);
+
+      if (snap.exists()) {
+        const levelData = { id: snap.id, ...snap.data() };
+        router.push({
+          pathname: "/main",
+          params: { levelData: JSON.stringify(levelData) },
+        });
+      } else {
+        // Fallback to main if level doesn't exist
+        router.push("/main");
+      }
+    } catch (error) {
+      console.error("Error fetching next level:", error);
+      router.push("/main");
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -13,7 +41,7 @@ export default function HomeScreen() {
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
-          onPress={() => router.push("/main")}
+          onPress={handlePlayClick}
           style={styles.playButton}
         >
           <View style={styles.buttonContent}>

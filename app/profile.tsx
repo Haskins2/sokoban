@@ -1,11 +1,13 @@
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, Alert, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/AuthContext";
+import { useUserProgress } from "@/contexts/UserProgressContext";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { completedLevels } = useUserProgress();
 
   const handleLogout = async () => {
     await logout();
@@ -53,9 +55,31 @@ export default function ProfileScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <MaterialIcons name="account-circle" size={120} color="#4CAF50" />
+          {user.photoURL ? (
+            <Image source={{ uri: user.photoURL }} style={styles.profileImage} />
+          ) : (
+            <MaterialIcons name="account-circle" size={120} color="#4CAF50" />
+          )}
           <Text style={styles.username}>{user.displayName || "Player"}</Text>
           <Text style={styles.email}>{user.email}</Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Game Statistics</Text>
+          <View style={styles.infoRow}>
+            <MaterialIcons name="emoji-events" size={20} color="#FFD700" />
+            <Text style={styles.infoLabel}>Levels Completed:</Text>
+            <Text style={styles.infoValue}>{completedLevels.length}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <MaterialIcons name="trending-up" size={20} color="#4CAF50" />
+            <Text style={styles.infoLabel}>Next Level:</Text>
+            <Text style={styles.infoValue}>
+              {completedLevels.length > 0
+                ? Math.max(...completedLevels) + 1
+                : 1}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -128,6 +152,11 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 40,
+  },
+  profileImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
   },
   username: {
     fontSize: 32,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,7 +30,14 @@ export function UserMenu() {
         onPress={() => setMenuVisible(true)}
         style={styles.userButton}
       >
-        <MaterialIcons name="account-circle" size={32} color="white" />
+        {user?.photoURL ? (
+          <Image
+            source={{ uri: user.photoURL }}
+            style={styles.profileImage}
+          />
+        ) : (
+          <MaterialIcons name="account-circle" size={32} color="white" />
+        )}
       </TouchableOpacity>
 
       <Modal
@@ -48,7 +55,14 @@ export function UserMenu() {
             {user ? (
               <>
                 <View style={styles.userInfo}>
-                  <MaterialIcons name="account-circle" size={60} color="#4CAF50" />
+                  {user.photoURL ? (
+                    <Image
+                      source={{ uri: user.photoURL }}
+                      style={styles.largeProfileImage}
+                    />
+                  ) : (
+                    <MaterialIcons name="account-circle" size={60} color="#4CAF50" />
+                  )}
                   <Text style={styles.username}>
                     {user.displayName || "Player"}
                   </Text>
@@ -109,6 +123,17 @@ const styles = StyleSheet.create({
     right: 20,
     padding: 10,
     zIndex: 10,
+  },
+  profileImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  largeProfileImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginBottom: 10,
   },
   overlay: {
     flex: 1,

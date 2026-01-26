@@ -1,12 +1,14 @@
 import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import { UserMenu } from "@/components/UserMenu";
 
 export default function HomeScreen() {
   const router = useRouter();
 
   return (
     <View style={styles.container}>
+      <UserMenu />
       <Text style={styles.title}>Sokoban</Text>
 
       <View style={styles.buttonContainer}>

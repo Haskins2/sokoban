@@ -16,6 +16,7 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { LevelConfig, Position } from "@/components/game/types";
 import { MaterialIcons } from "@expo/vector-icons";
+import { UserMenu } from "@/components/UserMenu";
 
 // Re-using images from SokobanBoard (assuming they are at these paths)
 const IMAGES = {
@@ -347,6 +348,7 @@ export default function LevelEditor() {
       >
         <MaterialIcons name="home" size={32} color="white" />
       </TouchableOpacity>
+      <UserMenu />
 
       <View style={styles.sidebar}>
         <Text style={styles.label}>Level #</Text>

@@ -12,6 +12,7 @@ import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { LevelConfig } from "@/components/game/types";
 import { MaterialIcons } from "@expo/vector-icons";
+import { UserMenu } from "@/components/UserMenu";
 
 export default function LevelSelect() {
   const [levels, setLevels] = useState<any[]>([]);
@@ -61,6 +62,7 @@ export default function LevelSelect() {
       >
         <MaterialIcons name="home" size={32} color="white" />
       </TouchableOpacity>
+      <UserMenu />
       <Text style={styles.title}>Select Level</Text>
       <FlatList
         data={levels}

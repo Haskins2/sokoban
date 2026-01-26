@@ -37,7 +37,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <UserMenu />
-      <Text style={styles.title}>Sokoban</Text>
+      <Text style={styles.title}>Zero Friction</Text>
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
@@ -84,8 +84,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 48,
     fontWeight: "bold",
+    fontFamily: "monospace",
     color: "white",
     marginBottom: 60,
+    letterSpacing: 2,
   },
   buttonContainer: {
     gap: 20,

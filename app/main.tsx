@@ -1,24 +1,25 @@
-import {
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
-  Platform,
-  ActivityIndicator,
-  Alert,
-} from "react-native";
-import { useEffect, useState, useCallback } from "react";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebaseConfig";
-import { SokobanBoard } from "@/components/game/SokobanBoard";
-import { Dpad } from "@/components/game/Dpad";
-import { useSokoban } from "@/components/game/useSokoban";
-import { LevelConfig } from "@/components/game/types";
 import { LEVELS } from "@/assets/levels";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Dpad } from "@/components/game/Dpad";
+import { SokobanBoard } from "@/components/game/SokobanBoard";
+import { LevelConfig } from "@/components/game/types";
+import { useSokoban } from "@/components/game/useSokoban";
 import { UserMenu } from "@/components/UserMenu";
 import { useUserProgress } from "@/contexts/UserProgressContext";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { doc, getDoc } from "firebase/firestore";
+import { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { db } from "../firebaseConfig";
 
 const INITIAL_LEVEL = LEVELS[0];
 
@@ -86,7 +87,7 @@ export default function HomeScreen() {
         move(direction);
       }
     },
-    [move, isWon]
+    [move, isWon],
   );
 
   // Mark level as complete when won
@@ -145,9 +146,11 @@ export default function HomeScreen() {
         <MaterialIcons name="home" size={32} color="white" />
       </TouchableOpacity>
       <UserMenu />
-      <Text style={styles.title}>
-        Sokoban {safeLevel.levelNumber ? `#${safeLevel.levelNumber}` : ""}
-      </Text>
+      <Image
+        source={require("../assets/images/app_logo_long.png")}
+        style={styles.logo}
+        resizeMode="contain"
+      />
       <View style={styles.gameContainer}>
         <SokobanBoard
           level={safeLevel}
@@ -167,7 +170,10 @@ export default function HomeScreen() {
             </TouchableOpacity>
             <Text style={styles.winText}>You Win!</Text>
             <View style={styles.winButtons}>
-              <TouchableOpacity onPress={handleReset} style={styles.replayButton}>
+              <TouchableOpacity
+                onPress={handleReset}
+                style={styles.replayButton}
+              >
                 <View style={styles.replayButtonContent}>
                   <Text style={styles.replayButtonText}>Replay</Text>
                   <MaterialIcons name="replay" size={18} color="white" />
@@ -223,11 +229,11 @@ const styles = StyleSheet.create({
     padding: 10,
     zIndex: 10,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "white",
-    marginBottom: 20,
+  logo: {
+    width: 1000,
+    height: 300,
+    marginBottom: -90,
+    marginTop: -80,
   },
   gameContainer: {
     marginBottom: 20,

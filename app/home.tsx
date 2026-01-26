@@ -1,9 +1,9 @@
-import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
-import { useRouter } from "expo-router";
-import { MaterialIcons } from "@expo/vector-icons";
 import { UserMenu } from "@/components/UserMenu";
 import { useUserProgress } from "@/contexts/UserProgressContext";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { doc, getDoc } from "firebase/firestore";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { db } from "../firebaseConfig";
 
 export default function HomeScreen() {
@@ -37,13 +37,14 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <UserMenu />
-      <Text style={styles.title}>Zero Friction</Text>
+      <Image
+        source={require("../assets/images/app_logo_large.png")}
+        style={styles.logo}
+        resizeMode="contain"
+      />
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          onPress={handlePlayClick}
-          style={styles.playButton}
-        >
+        <TouchableOpacity onPress={handlePlayClick} style={styles.playButton}>
           <View style={styles.buttonContent}>
             <MaterialIcons name="play-arrow" size={24} color="white" />
             <Text style={styles.playButtonText}>Play</Text>
@@ -81,13 +82,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#1a1a1a",
   },
-  title: {
-    fontSize: 48,
-    fontWeight: "bold",
-    fontFamily: "monospace",
-    color: "white",
-    marginBottom: 60,
-    letterSpacing: 2,
+  logo: {
+    width: 1000,
+    height: 400,
+    marginBottom: -40,
   },
   buttonContainer: {
     gap: 20,

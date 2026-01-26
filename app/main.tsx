@@ -18,6 +18,7 @@ import { LevelConfig } from "@/components/game/types";
 import { LEVELS } from "@/assets/levels";
 import { MaterialIcons } from "@expo/vector-icons";
 import { UserMenu } from "@/components/UserMenu";
+import { useUserProgress } from "@/contexts/UserProgressContext";
 
 const INITIAL_LEVEL = LEVELS[0];
 
@@ -27,6 +28,7 @@ export default function HomeScreen() {
   const [level, setLevel] = useState<LevelConfig | null>(null);
   const [loading, setLoading] = useState(false);
   const [winDismissed, setWinDismissed] = useState(false);
+  const { markLevelComplete } = useUserProgress();
 
   useEffect(() => {
     if (levelData) {
@@ -86,6 +88,13 @@ export default function HomeScreen() {
     },
     [move, isWon]
   );
+
+  // Mark level as complete when won
+  useEffect(() => {
+    if (isWon && safeLevel.levelNumber) {
+      markLevelComplete(safeLevel.levelNumber);
+    }
+  }, [isWon, safeLevel.levelNumber, markLevelComplete]);
 
   useEffect(() => {
     if (Platform.OS === "web") {

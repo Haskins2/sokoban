@@ -12,13 +12,13 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Image } from "expo-image";
 import { db } from "../firebaseConfig";
 
 const INITIAL_LEVEL = LEVELS[0];
@@ -149,7 +149,7 @@ export default function HomeScreen() {
       <Image
         source={require("../assets/images/app_logo_long.png")}
         style={styles.logo}
-        resizeMode="contain"
+        contentFit="contain"
       />
       <View style={styles.gameContainer}>
         <SokobanBoard
@@ -219,7 +219,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
+    paddingTop: 60,
     backgroundColor: "#1a1a1a",
   },
   homeButton: {
@@ -230,10 +231,10 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   logo: {
-    width: 1000,
-    height: 300,
-    marginBottom: -90,
-    marginTop: -80,
+    width: 300,
+    height: 80,
+    marginBottom: 20,
+    marginTop: 10,
   },
   gameContainer: {
     marginBottom: 20,

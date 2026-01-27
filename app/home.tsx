@@ -1,14 +1,33 @@
 import { UserMenu } from "@/components/UserMenu";
 import { useUserProgress } from "@/contexts/UserProgressContext";
-import { MaterialIcons } from "@expo/vector-icons";
+import {
+  Canvas,
+  Image as SkiaImage,
+  useImage,
+} from "@shopify/react-native-skia";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { doc, getDoc } from "firebase/firestore";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ImageBackground,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { db } from "../firebaseConfig";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { getNextIncompleteLevel } = useUserProgress();
+
+  const logoImage = useImage(
+    require("../assets/images/app_logo_large_350.png"),
+  );
+  const startImage = useImage(require("../assets/images/START.png"));
+  const levelSelectImage = useImage(
+    require("../assets/images/LEVEL_SELECT.png"),
+  );
 
   const handlePlayClick = async () => {
     const nextLevel = getNextIncompleteLevel();
@@ -35,43 +54,84 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ImageBackground
+      source={require("../assets/images/background.png")}
+      style={styles.container}
+      resizeMode="cover"
+    >
       <UserMenu />
-      <Image
-        source={require("../assets/images/app_logo_large.png")}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      {Platform.OS === "web" ? (
+        <Image
+          source={require("../assets/images/app_logo_large_350.png")}
+          style={styles.logo}
+          contentFit="contain"
+          transition={0}
+        />
+      ) : (
+        <Canvas style={styles.logo}>
+          {logoImage && (
+            <SkiaImage
+              image={logoImage}
+              x={0}
+              y={0}
+              width={118 * 3.1}
+              height={49 * 3.5}
+              fit="contain"
+            />
+          )}
+        </Canvas>
+      )}
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity onPress={handlePlayClick} style={styles.playButton}>
-          <View style={styles.buttonContent}>
-            <MaterialIcons name="play-arrow" size={24} color="white" />
-            <Text style={styles.playButtonText}>Play</Text>
-          </View>
+        <TouchableOpacity onPress={handlePlayClick}>
+          {Platform.OS === "web" ? (
+            <Image
+              source={require("../assets/images/START.png")}
+              style={styles.startButton}
+              contentFit="contain"
+              transition={0}
+            />
+          ) : (
+            <Canvas style={styles.startButton} pointerEvents="none">
+              {startImage && (
+                <SkiaImage
+                  image={startImage}
+                  x={0}
+                  y={0}
+                  width={95 * 3}
+                  height={23 * 3}
+                  fit="contain"
+                />
+              )}
+            </Canvas>
+          )}
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => router.push("/level_select")}
-          style={styles.menuButton}
-        >
-          <View style={styles.buttonContent}>
-            <MaterialIcons name="list" size={20} color="white" />
-            <Text style={styles.menuButtonText}>Level Select</Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => router.push("/level_editor")}
-          style={styles.menuButton}
-        >
-          <View style={styles.buttonContent}>
-            <MaterialIcons name="edit" size={20} color="white" />
-            <Text style={styles.menuButtonText}>Level Editor</Text>
-          </View>
+        <TouchableOpacity onPress={() => router.push("/level_select")}>
+          {Platform.OS === "web" ? (
+            <Image
+              source={require("../assets/images/LEVEL_SELECT.png")}
+              style={styles.levelSelectButton}
+              contentFit="contain"
+              transition={0}
+            />
+          ) : (
+            <Canvas style={styles.levelSelectButton} pointerEvents="none">
+              {levelSelectImage && (
+                <SkiaImage
+                  image={levelSelectImage}
+                  x={0}
+                  y={0}
+                  width={95 * 3}
+                  height={22 * 3}
+                  fit="contain"
+                />
+              )}
+            </Canvas>
+          )}
         </TouchableOpacity>
       </View>
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -83,42 +143,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#1a1a1a",
   },
   logo: {
-    width: 1000,
-    height: 400,
-    marginBottom: -40,
+    width: 118 * 3.2,
+    height: 49 * 3.3,
+    marginBottom: 50,
   },
   buttonContainer: {
     gap: 20,
     alignItems: "center",
   },
-  buttonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
+  startButton: {
+    width: 95 * 3,
+    height: 23 * 3,
   },
-  playButton: {
-    backgroundColor: "#4CAF50",
-    paddingHorizontal: 50,
-    paddingVertical: 15,
-    borderRadius: 12,
-    minWidth: 200,
-  },
-  playButtonText: {
-    color: "white",
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  menuButton: {
-    backgroundColor: "#333",
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    borderRadius: 8,
-    minWidth: 200,
-  },
-  menuButtonText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "bold",
+  levelSelectButton: {
+    width: 95 * 3,
+    height: 22 * 3,
   },
 });

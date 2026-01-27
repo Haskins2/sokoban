@@ -4,19 +4,20 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { Image, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
+import { Image } from "expo-image";
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
+  useSharedValue,
   withTiming,
 } from "react-native-reanimated";
 
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { UserProgressProvider } from "@/contexts/UserProgressContext";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -30,7 +31,7 @@ export default function RootLayout() {
     async function prepare() {
       try {
         // Minimum display time of 500ms
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (e) {
         console.warn(e);
       } finally {
@@ -59,13 +60,21 @@ export default function RootLayout() {
     <>
       <AuthProvider>
         <UserProgressProvider>
-          <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+          <ThemeProvider
+            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+          >
             <Stack>
               <Stack.Screen name="index" options={{ headerShown: false }} />
               <Stack.Screen name="home" options={{ headerShown: false }} />
               <Stack.Screen name="main" options={{ headerShown: false }} />
-              <Stack.Screen name="level_select" options={{ headerShown: false }} />
-              <Stack.Screen name="level_editor" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="level_select"
+                options={{ headerShown: false }}
+              />
+              <Stack.Screen
+                name="level_editor"
+                options={{ headerShown: false }}
+              />
               <Stack.Screen name="profile" options={{ headerShown: false }} />
               <Stack.Screen name="login" options={{ headerShown: false }} />
               <Stack.Screen name="signup" options={{ headerShown: false }} />
@@ -84,7 +93,7 @@ export default function RootLayout() {
           <Image
             source={require("../assets/images/app_logo.png")}
             style={styles.splashLogo}
-            resizeMode="contain"
+            contentFit="contain"
           />
         </Animated.View>
       )}

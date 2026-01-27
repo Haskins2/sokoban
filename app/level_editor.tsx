@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from "react";
+import { LevelConfig, Position } from "@/components/game/types";
+import { UserMenu } from "@/components/UserMenu";
+import { MaterialIcons } from "@expo/vector-icons";
+import { Stack, useRouter } from "expo-router";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
 import {
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
   Alert,
-  Image,
   Dimensions,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Stack, useRouter } from "expo-router";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { Image } from "expo-image";
 import { db } from "../firebaseConfig";
-import { LevelConfig, Position } from "@/components/game/types";
-import { MaterialIcons } from "@expo/vector-icons";
-import { UserMenu } from "@/components/UserMenu";
 
 // Re-using images from SokobanBoard (assuming they are at these paths)
 const IMAGES = {
@@ -245,7 +245,7 @@ export default function LevelEditor() {
                   style: "cancel",
                 },
                 { text: "Overwrite", onPress: () => saveLevel(true) },
-              ]
+              ],
             );
           }
           return;
@@ -317,23 +317,32 @@ export default function LevelEditor() {
           >
             <Image
               source={isWall ? IMAGES.wall : IMAGES.floor}
-              style={{ width: "100%", height: "100%", position: "absolute" }}
+              style={{
+                width: "100%",
+                height: "100%",
+                position: "absolute",
+              }}
+              contentFit="fill"
             />
             {isGoal && !isWall && <View style={styles.goalIndicator} />}
             {isBox && (
               <Image
                 source={IMAGES.box}
-                style={{ width: "100%", height: "100%" }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                }}
+                contentFit="fill"
               />
             )}
             {isPlayer && <View style={styles.playerIndicator} />}
-          </TouchableOpacity>
+          </TouchableOpacity>,
         );
       }
       rows.push(
         <View key={y} style={styles.row}>
           {row}
-        </View>
+        </View>,
       );
     }
     return rows;
@@ -398,7 +407,7 @@ export default function LevelEditor() {
                 {tool.charAt(0).toUpperCase() + tool.slice(1)}
               </Text>
             </TouchableOpacity>
-          )
+          ),
         )}
 
         <TouchableOpacity

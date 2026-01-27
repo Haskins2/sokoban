@@ -1,15 +1,16 @@
+import { Image } from "expo-image";
 import React, { useEffect } from "react";
-import { View, StyleSheet, Image, Dimensions } from "react-native";
+import { Dimensions, StyleSheet, View } from "react-native";
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSequence,
-  withDelay,
   Easing,
   cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withTiming,
 } from "react-native-reanimated";
-import { LevelConfig, GameState, MoveSequence } from "./types";
+import { GameState, LevelConfig, MoveSequence } from "./types";
 
 const IMAGES = {
   wall: require("../../assets/soko_images/wall.png"),
@@ -55,22 +56,18 @@ const AnimatedPlayer = ({
       svX.value = startPos.x * tileSize;
       svY.value = startPos.y * tileSize;
 
-      const sequenceX = path
-        .slice(1)
-        .map((p) =>
-          withTiming(p.x * tileSize, {
-            duration: TILE_DURATION,
-            easing: Easing.linear,
-          })
-        );
-      const sequenceY = path
-        .slice(1)
-        .map((p) =>
-          withTiming(p.y * tileSize, {
-            duration: TILE_DURATION,
-            easing: Easing.linear,
-          })
-        );
+      const sequenceX = path.slice(1).map((p) =>
+        withTiming(p.x * tileSize, {
+          duration: TILE_DURATION,
+          easing: Easing.linear,
+        }),
+      );
+      const sequenceY = path.slice(1).map((p) =>
+        withTiming(p.y * tileSize, {
+          duration: TILE_DURATION,
+          easing: Easing.linear,
+        }),
+      );
 
       if (sequenceX.length) svX.value = withSequence(...sequenceX);
       if (sequenceY.length) svY.value = withSequence(...sequenceY);
@@ -143,22 +140,18 @@ const AnimatedBox = ({
       svX.value = startPos.x * tileSize;
       svY.value = startPos.y * tileSize;
 
-      const sequenceX = path
-        .slice(1)
-        .map((p) =>
-          withTiming(p.x * tileSize, {
-            duration: TILE_DURATION,
-            easing: Easing.linear,
-          })
-        );
-      const sequenceY = path
-        .slice(1)
-        .map((p) =>
-          withTiming(p.y * tileSize, {
-            duration: TILE_DURATION,
-            easing: Easing.linear,
-          })
-        );
+      const sequenceX = path.slice(1).map((p) =>
+        withTiming(p.x * tileSize, {
+          duration: TILE_DURATION,
+          easing: Easing.linear,
+        }),
+      );
+      const sequenceY = path.slice(1).map((p) =>
+        withTiming(p.y * tileSize, {
+          duration: TILE_DURATION,
+          easing: Easing.linear,
+        }),
+      );
 
       if (sequenceX.length)
         svX.value = withDelay(delayTime, withSequence(...sequenceX));
@@ -186,7 +179,13 @@ const AnimatedBox = ({
     >
       <Image
         source={IMAGES.box}
-        style={{ width: tileSize, height: tileSize }}
+        style={{
+          width: tileSize,
+          height: tileSize,
+          imageRendering: "pixelated",
+        }}
+        contentFit="fill"
+        transition={0}
       />
     </Animated.View>
   );
@@ -220,7 +219,10 @@ export const SokobanBoard: React.FC<Props> = ({
                 width: tileSize,
                 height: tileSize,
                 position: "absolute",
+                imageRendering: "pixelated",
               }}
+              contentFit="fill"
+              transition={0}
             />
             {isGoal && !isWall && (
               <View
@@ -236,13 +238,13 @@ export const SokobanBoard: React.FC<Props> = ({
                 />
               </View>
             )}
-          </View>
+          </View>,
         );
       }
       rows.push(
         <View key={y} style={styles.row}>
           {row}
-        </View>
+        </View>,
       );
     }
     return rows;

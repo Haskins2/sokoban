@@ -20,8 +20,7 @@ export type TileType =
   | "wallTop"
   | "wallTRInner"
   | "wallTROuter"
-  | "cameraFollow"
-  | "cameraLockArea";
+  | "cameraZoom";
 
 export type TilePosition = Position & {
   tileType: TileType;
@@ -47,15 +46,7 @@ export type SubLevelArea = {
 };
 
 export type CameraTrigger = Position & {
-  mode: "follow" | "lockArea";
-  targetAreaId?: number;
-};
-
-export type CameraMode = "fixed" | "follow" | "lockedArea";
-
-export type CameraState = {
-  mode: CameraMode;
-  lockedAreaId?: number;
+  targetZoom: number;
 };
 
 export type LevelConfig = {
@@ -69,9 +60,10 @@ export type LevelConfig = {
   levelNumber?: number;
   tiles?: TilePosition[]; // Detailed tile information for rendering
   subLevels?: SubLevelArea[]; // Chapter mode: multiple puzzle areas
-  cameraTriggers?: CameraTrigger[]; // Camera control tiles
-  initialCameraState?: CameraState; // Starting camera mode
-  followZoom?: number; // Zoom level for follow mode (default: 1.0)
+  cameraTriggers?: CameraTrigger[]; // Camera zoom trigger tiles
+  followZoom?: number; // Default zoom level (default: 2.0)
+  finishPosition?: Position; // Chapter finish tile
+  chapterNumber?: number; // For showing chapter_x_complete.png
 };
 
 export type GameState = {

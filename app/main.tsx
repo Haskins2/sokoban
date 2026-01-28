@@ -8,7 +8,7 @@ import { useUserProgress } from "@/contexts/UserProgressContext";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { doc, getDoc } from "firebase/firestore";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -65,14 +65,28 @@ export default function HomeScreen() {
 
   const handleReset = () => {
     reset();
+    setJustCompletedSubLevel(null);
+    setPrevCompletedSubLevels([]);
   };
 
   // Safe fallback for hook
   const safeLevel = level || INITIAL_LEVEL;
-  const [justCompletedSubLevel, setJustCompletedSubLevel] = useState<number | null>(null);
+  const [justCompletedSubLevel, setJustCompletedSubLevel] = useState<
+    number | null
+  >(null);
 
-  const { gameState, move, reset, undo, isWon, lastMove, doorOpen, openDoors, completedSubLevels } =
-    useSokoban(safeLevel);
+  const {
+    gameState,
+    move,
+    reset,
+    undo,
+    isWon,
+    lastMove,
+    doorOpen,
+    openDoors,
+    completedSubLevels,
+    isChapterComplete,
+  } = useSokoban(safeLevel);
 
   const safeMove = useCallback(
     (direction: "up" | "down" | "left" | "right") => {
@@ -89,12 +103,17 @@ export default function HomeScreen() {
   }, [isWon, safeLevel.levelNumber, markLevelComplete]);
 
   // Track completed sub-levels and show notification
-  const [prevCompletedSubLevels, setPrevCompletedSubLevels] = useState<number[]>([]);
+  const [prevCompletedSubLevels, setPrevCompletedSubLevels] = useState<
+    number[]
+  >([]);
   useEffect(() => {
-    if (completedSubLevels && completedSubLevels.length > prevCompletedSubLevels.length) {
+    if (
+      completedSubLevels &&
+      completedSubLevels.length > prevCompletedSubLevels.length
+    ) {
       // Find newly completed sub-levels
       const newlyCompleted = completedSubLevels.filter(
-        id => !prevCompletedSubLevels.includes(id)
+        (id) => !prevCompletedSubLevels.includes(id),
       );
       if (newlyCompleted.length > 0) {
         setJustCompletedSubLevel(newlyCompleted[0]);
@@ -104,13 +123,26 @@ export default function HomeScreen() {
     }
   }, [completedSubLevels, prevCompletedSubLevels]);
 
+  // Handle chapter complete - show message for 3 seconds then navigate home
+  useEffect(() => {
+    if (isChapterComplete) {
+      const timer = setTimeout(() => {
+        router.push("/home");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isChapterComplete, router]);
+
   // Advance level when player enters open door
   useEffect(() => {
     if (!safeLevel.subLevels || safeLevel.subLevels.length === 0) {
       // Legacy mode: single door
-      if (doorOpen && safeLevel.door &&
-          gameState.player.x === safeLevel.door.x &&
-          gameState.player.y === safeLevel.door.y) {
+      if (
+        doorOpen &&
+        safeLevel.door &&
+        gameState.player.x === safeLevel.door.x &&
+        gameState.player.y === safeLevel.door.y
+      ) {
         if (safeLevel.levelNumber) {
           fetchLevel(safeLevel.levelNumber + 1);
         }
@@ -118,37 +150,58 @@ export default function HomeScreen() {
     } else {
       // Chapter mode: check final sub-level's door
       const finalArea = safeLevel.subLevels[safeLevel.subLevels.length - 1];
-      if (openDoors && openDoors.has(finalArea.id) && finalArea.door &&
-          gameState.player.x === finalArea.door.x &&
-          gameState.player.y === finalArea.door.y) {
+      if (
+        openDoors &&
+        openDoors.has(finalArea.id) &&
+        finalArea.door &&
+        gameState.player.x === finalArea.door.x &&
+        gameState.player.y === finalArea.door.y
+      ) {
         if (safeLevel.levelNumber) {
           fetchLevel(safeLevel.levelNumber + 1);
         }
       }
     }
-  }, [doorOpen, openDoors, gameState.player, safeLevel.door, safeLevel.subLevels, safeLevel.levelNumber]);
+  }, [
+    doorOpen,
+    openDoors,
+    gameState.player,
+    safeLevel.door,
+    safeLevel.subLevels,
+    safeLevel.levelNumber,
+  ]);
+
+  // Use refs to avoid re-attaching event listener on every state change
+  const safeMoveRef = useRef(safeMove);
+  const resetRef = useRef(reset);
+  const undoRef = useRef(undo);
+
+  // Keep refs up to date
+  safeMoveRef.current = safeMove;
+  resetRef.current = reset;
+  undoRef.current = undo;
 
   useEffect(() => {
     if (Platform.OS === "web") {
       const handleKeyDown = (event: KeyboardEvent) => {
         switch (event.key.toLowerCase()) {
           case "w":
-            safeMove("up");
+            safeMoveRef.current("up");
             break;
           case "a":
-            safeMove("left");
+            safeMoveRef.current("left");
             break;
           case "s":
-            safeMove("down");
+            safeMoveRef.current("down");
             break;
           case "d":
-            safeMove("right");
+            safeMoveRef.current("right");
             break;
           case "q":
-            reset();
+            resetRef.current();
             break;
           case "e":
-            undo();
+            undoRef.current();
             break;
         }
       };
@@ -158,7 +211,7 @@ export default function HomeScreen() {
         window.removeEventListener("keydown", handleKeyDown);
       };
     }
-  }, [safeMove, reset, undo]);
+  }, []); // No dependencies - handler uses refs
 
   if (loading) {
     return (
@@ -187,12 +240,13 @@ export default function HomeScreen() {
             doorOpen={doorOpen}
             openDoors={openDoors}
             justCompletedSubLevel={justCompletedSubLevel}
+            isChapterComplete={isChapterComplete}
           />
         </View>
       </GameGestureWrapper>
       <View style={styles.buttonContainer}>
         <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
-          <Text style={styles.resetButtonText}>Reset Level</Text>
+          <Text style={styles.resetButtonText}>Reset Chapter</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={undo} style={styles.undoButton}>
           <Text style={styles.undoButtonText}>Undo</Text>
@@ -234,12 +288,6 @@ const styles = StyleSheet.create({
   gameContainer: {
     marginTop: 200,
   },
-  winText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#4CAF50",
-    marginBottom: 20,
-  },
   buttonContainer: {
     flexDirection: "row",
     marginTop: 30,
@@ -267,86 +315,6 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
-  },
-  editorButton: {
-    marginTop: 20,
-    padding: 10,
-    backgroundColor: "#2196F3",
-    borderRadius: 8,
-  },
-  editorButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  winOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-  },
-  winContainer: {
-    alignItems: "center",
-    padding: 30,
-    backgroundColor: "#2a2a2a",
-    borderRadius: 16,
-    position: "relative",
-    minWidth: 200,
-  },
-  closeButton: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    width: 30,
-    height: 30,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  closeButtonText: {
-    color: "#888",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  winButtons: {
-    flexDirection: "column",
-    gap: 15,
-    marginTop: 20,
-  },
-  replayButton: {
-    backgroundColor: "#555",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  replayButtonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  replayButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  nextButton: {
-    backgroundColor: "#4CAF50",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  nextButtonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  nextButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
   },
   navButtons: {
     flexDirection: "row",

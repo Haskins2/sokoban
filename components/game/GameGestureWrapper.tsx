@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
@@ -13,13 +13,17 @@ export const GameGestureWrapper: React.FC<Props> = ({ onMove, children }) => {
   const startPos = useRef({ x: 0, y: 0 });
   const hasMoved = useRef(false);
 
-  // Wrap onMove to safely call from gesture handler
-  const handleMove = useCallback((direction: Direction) => {
-    onMove(direction);
-  }, [onMove]);
+  // Use ref to always have latest onMove without recreating gesture
+  const onMoveRef = useRef(onMove);
+  onMoveRef.current = onMove;
 
-  // Use Pan gesture to detect swipes
-  const panGesture = Gesture.Pan()
+  // Stable callback that uses ref
+  const handleMove = (direction: Direction) => {
+    onMoveRef.current(direction);
+  };
+
+  // Memoize gesture to prevent recreation on every render
+  const panGesture = useMemo(() => Gesture.Pan()
     .onBegin((event) => {
       startPos.current = { x: event.x, y: event.y };
       hasMoved.current = false;
@@ -57,7 +61,7 @@ export const GameGestureWrapper: React.FC<Props> = ({ onMove, children }) => {
           }
         }
       }
-    });
+    }), []); // Empty deps - handleMove uses ref internally
 
   return (
     <GestureDetector gesture={panGesture}>

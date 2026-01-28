@@ -4,7 +4,6 @@ import {
   LevelConfig,
   Position,
   SubLevelArea,
-  TilePosition,
 } from "@/components/game/types";
 import { UserMenu } from "@/components/UserMenu";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -49,6 +48,7 @@ const IMAGES = {
   doorOpenLr: require("../assets/images/tilesheet/door_open_lr.png"),
   doorClosedUd: require("../assets/images/tilesheet/door_closed_ud.png"),
   doorOpenUd: require("../assets/images/tilesheet/door_open_ud.png"),
+  finish: require("../assets/images/tilesheet/Finish.png"),
 };
 
 type TileType =
@@ -65,7 +65,8 @@ type TileType =
   | "wallTLOuter"
   | "wallTop"
   | "wallTRInner"
-  | "wallTROuter";
+  | "wallTROuter"
+  | "cameraZoom";
 
 type Tool =
   | TileType
@@ -74,9 +75,9 @@ type Tool =
   | "player"
   | "doorLr"
   | "doorUd"
-  | "cameraFollow"
-  | "cameraLockArea"
+  | "cameraZoom"
   | "autoWall"
+  | "finish"
   | "delete";
 
 type TilePosition = Position & {
@@ -103,9 +104,9 @@ const TOOL_LABELS: Record<Tool, string> = {
   player: "Player",
   doorLr: "Door H",
   doorUd: "Door V",
-  cameraFollow: "Cam Follow",
-  cameraLockArea: "Cam Lock",
+  cameraZoom: "Cam Zoom",
   autoWall: "Auto Wall",
+  finish: "Finish",
   delete: "Delete",
 };
 
@@ -133,6 +134,8 @@ export default function LevelEditor() {
   const [goals, setGoals] = useState<Position[]>([]);
   const [player, setPlayer] = useState<Position | null>(null);
   const [door, setDoor] = useState<Door | null>(null);
+  const [finish, setFinish] = useState<Position | null>(null);
+  const [chapterNumber, setChapterNumber] = useState("1");
 
   // Sub-level area state
   const [subLevelAreas, setSubLevelAreas] = useState<SubLevelArea[]>([]);
@@ -140,11 +143,15 @@ export default function LevelEditor() {
   const [areaStartPos, setAreaStartPos] = useState<Position | null>(null);
   const [areaEndPos, setAreaEndPos] = useState<Position | null>(null);
   const [selectedAreaId, setSelectedAreaId] = useState<number | null>(null);
-  const [cameraTriggerTargets, setCameraTriggerTargets] = useState<
+
+  // Camera zoom trigger state
+  const [cameraZoomTriggers, setCameraZoomTriggers] = useState<
     Map<string, number>
   >(new Map());
-  const [editingCameraTrigger, setEditingCameraTrigger] =
+  const [showZoomInput, setShowZoomInput] = useState(false);
+  const [pendingZoomPosition, setPendingZoomPosition] =
     useState<Position | null>(null);
+  const [zoomInputValue, setZoomInputValue] = useState("2.0");
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -187,11 +194,7 @@ export default function LevelEditor() {
 
   const isFloorTile = (tileType?: TileType): boolean => {
     if (!tileType) return true; // Empty tiles are treated as floor
-    return (
-      tileType === "floor" ||
-      tileType === "cameraFollow" ||
-      tileType === "cameraLockArea"
-    );
+    return tileType === "floor" || tileType === "cameraZoom";
   };
 
   const determineAutoWallType = (x: number, y: number): TileType => {
@@ -214,9 +217,6 @@ export default function LevelEditor() {
     const floorSE = isFloorTile(se?.tileType);
     const floorSW = isFloorTile(sw?.tileType);
     const floorNW = isFloorTile(nw?.tileType);
-
-    // Count floor tiles in cardinal directions
-    const floorCount = [floorN, floorE, floorS, floorW].filter(Boolean).length;
 
     // OUTER CORNERS: Floor on exactly 2 adjacent sides, no floor on opposite sides
     if (floorN && floorW && !floorE && !floorS) return "wallTLOuter";
@@ -251,6 +251,7 @@ export default function LevelEditor() {
       setGoals((prev) => removeAt(x, y, prev));
       setPlayer((prev) => (prev?.x === x && prev?.y === y ? null : prev));
       setDoor((prev) => (prev?.x === x && prev?.y === y ? null : prev));
+      setFinish((prev) => (prev?.x === x && prev?.y === y ? null : prev));
       // Also remove doors from sub-level areas
       setSubLevelAreas((prev) =>
         prev.map((area) =>
@@ -278,24 +279,15 @@ export default function LevelEditor() {
       return;
     }
 
-    if (selectedTool === "cameraFollow" || selectedTool === "cameraLockArea") {
+    if (selectedTool === "cameraZoom") {
       if (action === "add") {
-        setTiles((prev) => {
-          const filtered = removeTileAt(x, y);
-          return [...filtered, { x, y, tileType: selectedTool }];
-        });
-        setBoxes((prev) => removeAt(x, y, prev));
-        setGoals((prev) => removeAt(x, y, prev));
-        setPlayer((prev) => (prev?.x === x && prev?.y === y ? null : prev));
-
-        // Show area selection dialog for camera lock tiles
-        if (selectedTool === "cameraLockArea" && subLevelAreas.length > 0) {
-          setEditingCameraTrigger({ x, y });
-        }
+        // Show zoom input modal before placing the tile
+        setPendingZoomPosition({ x, y });
+        setShowZoomInput(true);
       } else {
         setTiles(removeTileAt(x, y));
-        // Remove camera trigger target mapping when deleting
-        setCameraTriggerTargets((prev) => {
+        // Remove camera zoom trigger mapping when deleting
+        setCameraZoomTriggers((prev) => {
           const newMap = new Map(prev);
           newMap.delete(`${x},${y}`);
           return newMap;
@@ -404,6 +396,22 @@ export default function LevelEditor() {
       return;
     }
 
+    if (selectedTool === "finish") {
+      if (action === "add") {
+        setTiles((prev) => {
+          const filtered = removeTileAt(x, y);
+          return [...filtered, { x, y, tileType: "floor" }];
+        });
+        setFinish({ x, y });
+        setBoxes((prev) => removeAt(x, y, prev));
+        setGoals((prev) => removeAt(x, y, prev));
+        setPlayer((prev) => (prev?.x === x && prev?.y === y ? null : prev));
+      } else {
+        setFinish((prev) => (prev?.x === x && prev?.y === y ? null : prev));
+      }
+      return;
+    }
+
     // For tile types
     const tileType = selectedTool as TileType;
     if (action === "add") {
@@ -455,6 +463,12 @@ export default function LevelEditor() {
       player?.y === y
     ) {
       action = "remove";
+    } else if (
+      selectedTool === "finish" &&
+      finish?.x === x &&
+      finish?.y === y
+    ) {
+      action = "remove";
     } else if (selectedTool === "delete") {
       action = "remove";
     } else if (tile && tile.tileType === selectedTool) {
@@ -485,6 +499,12 @@ export default function LevelEditor() {
       selectedTool === "player" &&
       player?.x === x &&
       player?.y === y
+    ) {
+      action = "remove";
+    } else if (
+      selectedTool === "finish" &&
+      finish?.x === x &&
+      finish?.y === y
     ) {
       action = "remove";
     } else if (selectedTool === "delete") {
@@ -519,50 +539,13 @@ export default function LevelEditor() {
     }
   };
 
-  const assignElementsToAreas = () => {
-    return subLevelAreas.map((area) => {
-      const boxIndices: number[] = [];
-      const goalIndices: number[] = [];
-
-      boxes.forEach((box, i) => {
-        if (
-          box.x >= area.bounds.minX &&
-          box.x <= area.bounds.maxX &&
-          box.y >= area.bounds.minY &&
-          box.y <= area.bounds.maxY
-        ) {
-          boxIndices.push(i);
-        }
-      });
-
-      goals.forEach((goal, i) => {
-        if (
-          goal.x >= area.bounds.minX &&
-          goal.x <= area.bounds.maxX &&
-          goal.y >= area.bounds.minY &&
-          goal.y <= area.bounds.maxY
-        ) {
-          goalIndices.push(i);
-        }
-      });
-
-      return { ...area, boxIndices, goalIndices };
-    });
-  };
-
   const extractCameraTriggers = (tiles: TilePosition[]): CameraTrigger[] => {
     return tiles
-      .filter(
-        (t) => t.tileType === "cameraFollow" || t.tileType === "cameraLockArea",
-      )
+      .filter((t) => t.tileType === "cameraZoom")
       .map((t) => ({
         x: t.x,
         y: t.y,
-        mode:
-          t.tileType === "cameraFollow"
-            ? ("follow" as const)
-            : ("lockArea" as const),
-        targetAreaId: cameraTriggerTargets.get(`${t.x},${t.y}`),
+        targetZoom: cameraZoomTriggers.get(`${t.x},${t.y}`) ?? 2.0,
       }));
   };
 
@@ -588,10 +571,8 @@ export default function LevelEditor() {
   };
 
   const saveLevel = async (force = false) => {
-    console.log("saveLevel: Function called");
     setStatusMsg("Saving...");
     if (!player) {
-      console.log("saveLevel: No player position set");
       setStatusMsg("Error: Place a player first!");
       Alert.alert("Error", "Level must have a player start position");
       return;
@@ -599,6 +580,7 @@ export default function LevelEditor() {
 
     // Calculate bounding box
     const allPositions = [...tiles, ...boxes, ...goals, player];
+    if (finish) allPositions.push(finish);
     if (allPositions.length === 0) {
       setStatusMsg("Error: Level is empty!");
       Alert.alert("Error", "Level must have at least some elements");
@@ -626,11 +608,7 @@ export default function LevelEditor() {
       normalizedTiles.push(normalized);
 
       // Only add actual wall tiles to walls array (not floor or camera triggers)
-      if (
-        tile.tileType !== "floor" &&
-        tile.tileType !== "cameraFollow" &&
-        tile.tileType !== "cameraLockArea"
-      ) {
+      if (tile.tileType !== "floor" && tile.tileType !== "cameraZoom") {
         walls.push(normalizePos(tile));
       }
     });
@@ -650,14 +628,6 @@ export default function LevelEditor() {
     const normalizedBoxes = boxes.map(normalizePos);
     const normalizedGoals = goals.map(normalizePos);
     const normalizedPlayer = normalizePos(player);
-
-    console.log("Building level config...");
-    console.log("Original boxes:", boxes);
-    console.log("Normalized boxes:", normalizedBoxes);
-    console.log("Original goals:", goals);
-    console.log("Normalized goals:", normalizedGoals);
-    console.log("Sub-level areas:", subLevelAreas);
-    console.log("Camera triggers:", extractCameraTriggers(tiles));
 
     // Assign elements to areas using NORMALIZED positions
     const assignElementsToAreasNormalized = () => {
@@ -695,12 +665,6 @@ export default function LevelEditor() {
           }
         });
 
-        console.log(
-          `Area ${area.id} - boxIndices:`,
-          boxIndices,
-          "goalIndices:",
-          goalIndices,
-        );
         return { ...area, boxIndices, goalIndices };
       });
     };
@@ -764,17 +728,12 @@ export default function LevelEditor() {
         extractCameraTriggers(tiles).length > 0
           ? extractCameraTriggers(tiles).map((t) => ({
               ...normalizePos(t),
-              mode: t.mode,
-              targetAreaId: t.targetAreaId,
+              targetZoom: t.targetZoom,
             }))
           : undefined,
-      initialCameraState:
-        assignedAreas.length > 0
-          ? { mode: "lockedArea" as const, lockedAreaId: assignedAreas[0].id }
-          : { mode: "fixed" as const },
+      finishPosition: finish ? normalizePos(finish) : undefined,
+      chapterNumber: finish ? parseInt(chapterNumber) || 1 : undefined,
     };
-
-    console.log("Level config built:", JSON.stringify(levelConfig, null, 2));
 
     const docId = `level_${levelNumber}`;
     const docRef = doc(db, "levels", docId);
@@ -824,12 +783,8 @@ export default function LevelEditor() {
         createdAt: new Date(),
       };
 
-      console.log("Attempting to save to Firestore...");
-      console.log("Data to save:", JSON.stringify(dataToSave, null, 2));
-
       await setDoc(docRef, dataToSave);
 
-      console.log("Document written with ID: ", docId);
       setStatusMsg("Saved to Firestore!");
       if (Platform.OS === "web") {
         window.alert("Level saved successfully to Firestore!");
@@ -848,6 +803,68 @@ export default function LevelEditor() {
         );
       } else {
         Alert.alert("Error", errorMsg);
+      }
+    }
+  };
+
+  const loadLevel = async () => {
+    setStatusMsg("Loading...");
+    try {
+      const docRef = doc(db, "levels", `level_${levelNumber}`);
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        setStatusMsg(`Level ${levelNumber} not found!`);
+        if (Platform.OS === "web") {
+          window.alert(`Level ${levelNumber} does not exist in Firestore`);
+        } else {
+          Alert.alert("Not Found", `Level ${levelNumber} does not exist`);
+        }
+        return;
+      }
+
+      const levelData = docSnap.data() as LevelConfig;
+
+      // Populate all editor state from loaded level
+      setTiles(levelData.tiles || []);
+      setBoxes(levelData.boxes || []);
+      setGoals(levelData.goals || []);
+      setPlayer(levelData.initialPlayer || null);
+      setDoor(levelData.door || null);
+      setFinish(levelData.finishPosition || null);
+      setChapterNumber(levelData.chapterNumber?.toString() || "1");
+
+      // Load sub-level areas if they exist
+      if (levelData.subLevels) {
+        setSubLevelAreas(levelData.subLevels);
+      } else {
+        setSubLevelAreas([]);
+      }
+
+      // Load camera zoom triggers
+      if (levelData.cameraTriggers) {
+        const zoomMap = new Map<string, number>();
+        levelData.cameraTriggers.forEach((trigger) => {
+          zoomMap.set(`${trigger.x},${trigger.y}`, trigger.targetZoom);
+        });
+        setCameraZoomTriggers(zoomMap);
+      } else {
+        setCameraZoomTriggers(new Map());
+      }
+
+      setStatusMsg(`Loaded level ${levelNumber}!`);
+      if (Platform.OS === "web") {
+        window.alert(`Level ${levelNumber} loaded successfully!`);
+      } else {
+        Alert.alert("Success", `Level ${levelNumber} loaded successfully!`);
+      }
+    } catch (e: any) {
+      console.error("Error loading level:", e);
+      setStatusMsg(`Error loading: ${e?.message || e}`);
+      if (Platform.OS === "web") {
+        window.alert(`Failed to load level.\n\nError: ${e?.message || e}`);
+      } else {
+        Alert.alert("Error", `Failed to load level: ${e?.message || e}`);
       }
     }
   };
@@ -892,6 +909,7 @@ export default function LevelEditor() {
     boxes.forEach((p) => allPositions.add(`${p.x},${p.y}`));
     goals.forEach((p) => allPositions.add(`${p.x},${p.y}`));
     if (player) allPositions.add(`${player.x},${player.y}`);
+    if (finish) allPositions.add(`${finish.x},${finish.y}`);
 
     // Determine grid bounds to show
     let minX = minVisibleX;
@@ -903,6 +921,7 @@ export default function LevelEditor() {
     if (allPositions.size > 0) {
       const positions = [...tiles, ...boxes, ...goals];
       if (player) positions.push(player);
+      if (finish) positions.push(finish);
       if (positions.length > 0) {
         minX = Math.min(minX, Math.min(...positions.map((p) => p.x)) - 2);
         maxX = Math.max(maxX, Math.max(...positions.map((p) => p.x)) + 2);
@@ -920,6 +939,7 @@ export default function LevelEditor() {
         const isBox = isAt(x, y, boxes);
         const isGoal = isAt(x, y, goals);
         const isPlayer = player?.x === x && player?.y === y;
+        const isFinish = finish?.x === x && finish?.y === y;
 
         // Check for door at this position (global or from sub-level areas)
         const globalDoor = door?.x === x && door?.y === y ? door : null;
@@ -969,8 +989,7 @@ export default function LevelEditor() {
               <>
                 <Image
                   source={
-                    tile.tileType === "cameraFollow" ||
-                    tile.tileType === "cameraLockArea"
+                    tile.tileType === "cameraZoom"
                       ? IMAGES.floor
                       : IMAGES[tile.tileType]
                   }
@@ -981,44 +1000,38 @@ export default function LevelEditor() {
                   }}
                   resizeMode="stretch"
                 />
-                {(tile.tileType === "cameraFollow" ||
-                  tile.tileType === "cameraLockArea") && (
+                {tile.tileType === "cameraZoom" && (
                   <>
                     <View
                       style={{
                         width: "100%",
                         height: "100%",
                         borderWidth: 2,
-                        borderColor:
-                          tile.tileType === "cameraFollow"
-                            ? "rgba(0, 255, 0, 0.8)"
-                            : "rgba(0, 150, 255, 0.8)",
+                        borderColor: "rgba(255, 165, 0, 0.8)",
                         position: "absolute",
                       }}
                     />
-                    {tile.tileType === "cameraLockArea" && (
-                      <View
+                    <View
+                      style={{
+                        position: "absolute",
+                        bottom: 2,
+                        right: 2,
+                        backgroundColor: "rgba(255, 165, 0, 0.9)",
+                        paddingHorizontal: 4,
+                        paddingVertical: 2,
+                        borderRadius: 3,
+                      }}
+                    >
+                      <Text
                         style={{
-                          position: "absolute",
-                          bottom: 2,
-                          right: 2,
-                          backgroundColor: "rgba(0, 150, 255, 0.9)",
-                          paddingHorizontal: 4,
-                          paddingVertical: 2,
-                          borderRadius: 3,
+                          color: "white",
+                          fontSize: 10,
+                          fontWeight: "bold",
                         }}
                       >
-                        <Text
-                          style={{
-                            color: "white",
-                            fontSize: 10,
-                            fontWeight: "bold",
-                          }}
-                        >
-                          {cameraTriggerTargets.get(`${x},${y}`) || "?"}
-                        </Text>
-                      </View>
-                    )}
+                        {cameraZoomTriggers.get(`${x},${y}`) ?? "2.0"}x
+                      </Text>
+                    </View>
                   </>
                 )}
               </>
@@ -1046,6 +1059,16 @@ export default function LevelEditor() {
             {isPlayer && (
               <Image
                 source={IMAGES.playerRight}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                }}
+                resizeMode="stretch"
+              />
+            )}
+            {isFinish && (
+              <Image
+                source={IMAGES.finish}
                 style={{
                   width: "100%",
                   height: "100%",
@@ -1206,24 +1229,35 @@ export default function LevelEditor() {
         {renderToolButton("box", "box")}
         {renderToolButton("goal", "goal")}
         {renderToolButton("player", "playerRight")}
+        {renderToolButton("finish", "finish")}
 
         <Text style={styles.sectionHeader}>Door</Text>
         {renderToolButton("doorLr", "doorClosedLr")}
         {renderToolButton("doorUd", "doorClosedUd")}
 
         <Text style={styles.sectionHeader}>Camera</Text>
-        {renderToolButton("cameraFollow", "floor")}
-        {renderToolButton("cameraLockArea", "floor")}
+        {renderToolButton("cameraZoom", "floor")}
 
         {renderToolButton("delete")}
 
+        <Text style={styles.label}>Chapter #</Text>
+        <TextInput
+          style={styles.input}
+          value={chapterNumber}
+          onChangeText={setChapterNumber}
+          keyboardType="numeric"
+          placeholder="1"
+          placeholderTextColor="#666"
+        />
+
         <TouchableOpacity
-          style={styles.saveButton}
-          onPress={() => {
-            console.log("Save button pressed");
-            saveLevel();
-          }}
+          style={[styles.saveButton, { backgroundColor: "#FF9800" }]}
+          onPress={() => loadLevel()}
         >
+          <Text style={styles.saveButtonText}>Load Level</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.saveButton} onPress={() => saveLevel()}>
           <Text style={styles.saveButtonText}>Save Level</Text>
         </TouchableOpacity>
 
@@ -1313,123 +1347,69 @@ export default function LevelEditor() {
               }}
             />
           )}
-
-          {/* Camera Preview for Selected Area */}
-          {selectedAreaId !== null &&
-            (() => {
-              const area = subLevelAreas.find((a) => a.id === selectedAreaId);
-              if (!area) return null;
-
-              const screenWidth = Dimensions.get("window").width;
-              const screenHeight = Dimensions.get("window").height;
-
-              // Use manual camera settings if defined, otherwise auto-calculate
-              let cameraX, cameraY, cameraScale;
-              if (
-                area.cameraX !== undefined &&
-                area.cameraY !== undefined &&
-                area.cameraScale !== undefined
-              ) {
-                cameraX = area.cameraX;
-                cameraY = area.cameraY;
-                cameraScale = area.cameraScale;
-              } else {
-                // Auto-calculate
-                const areaWidth =
-                  (area.bounds.maxX - area.bounds.minX + 1) * tileSize;
-                const areaHeight =
-                  (area.bounds.maxY - area.bounds.minY + 1) * tileSize;
-                const scaleX = (screenWidth * 0.95) / areaWidth;
-                const scaleY = (screenHeight * 0.95) / areaHeight;
-                cameraScale = Math.min(scaleX, scaleY, 1);
-
-                const areaCenterX =
-                  ((area.bounds.minX + area.bounds.maxX) / 2) * tileSize +
-                  tileSize / 2;
-                const areaCenterY =
-                  ((area.bounds.minY + area.bounds.maxY) / 2) * tileSize +
-                  tileSize / 2;
-
-                cameraX = screenWidth / 2 - areaCenterX;
-                cameraY = screenHeight / 2 - areaCenterY;
-              }
-
-              // Calculate what area is visible on screen
-              // Reverse the camera transform to get the viewport in world coordinates
-              const viewportLeft = -cameraX / zoom;
-              const viewportTop = -cameraY / zoom;
-              const viewportWidth = screenWidth / zoom;
-              const viewportHeight = screenHeight / zoom;
-
-              return (
-                <View
-                  style={{
-                    position: "absolute",
-                    left: viewportLeft,
-                    top: viewportTop,
-                    width: viewportWidth,
-                    height: viewportHeight,
-                    borderWidth: 3 / zoom,
-                    borderColor: "#FF9800",
-                    backgroundColor: "rgba(255, 152, 0, 0.1)",
-                    pointerEvents: "none",
-                  }}
-                >
-                  <Text
-                    style={{
-                      position: "absolute",
-                      top: 5 / zoom,
-                      left: 5 / zoom,
-                      color: "#FF9800",
-                      fontSize: 12 / zoom,
-                      fontWeight: "bold",
-                      backgroundColor: "rgba(0, 0, 0, 0.7)",
-                      padding: 4 / zoom,
-                    }}
-                  >
-                    Camera View (Area {selectedAreaId})
-                  </Text>
-                </View>
-              );
-            })()}
         </View>
       </View>
 
-      {/* Camera Trigger Area Selection Modal */}
-      {editingCameraTrigger && subLevelAreas.length > 0 && (
+      {/* Camera Zoom Input Modal */}
+      {showZoomInput && pendingZoomPosition && (
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Select Target Area</Text>
+            <Text style={styles.modalTitle}>Set Zoom Level</Text>
             <Text style={styles.modalHelp}>
-              Which area should this camera lock trigger to?
+              Enter the zoom level for this trigger (e.g., 0.5, 1.0, 2.0, 3.0)
             </Text>
-            <ScrollView style={styles.areaList}>
-              {subLevelAreas.map((area) => (
-                <TouchableOpacity
-                  key={area.id}
-                  style={styles.areaOption}
-                  onPress={() => {
-                    setCameraTriggerTargets((prev) => {
-                      const newMap = new Map(prev);
-                      newMap.set(
-                        `${editingCameraTrigger.x},${editingCameraTrigger.y}`,
-                        area.id,
-                      );
-                      return newMap;
-                    });
-                    setEditingCameraTrigger(null);
-                  }}
-                >
-                  <Text style={styles.areaOptionText}>Area {area.id}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <TouchableOpacity
-              style={styles.modalCancelButton}
-              onPress={() => setEditingCameraTrigger(null)}
-            >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </TouchableOpacity>
+            <TextInput
+              style={styles.zoomInput}
+              value={zoomInputValue}
+              onChangeText={setZoomInputValue}
+              keyboardType="decimal-pad"
+              placeholder="2.0"
+              placeholderTextColor="#888"
+              autoFocus
+            />
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={styles.modalCancelButton}
+                onPress={() => {
+                  setShowZoomInput(false);
+                  setPendingZoomPosition(null);
+                  setZoomInputValue("2.0");
+                }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalSaveButton}
+                onPress={() => {
+                  const zoomValue = parseFloat(zoomInputValue) || 2.0;
+                  const { x, y } = pendingZoomPosition;
+
+                  // Add the tile
+                  setTiles((prev) => {
+                    const filtered = removeTileAt(x, y);
+                    return [...filtered, { x, y, tileType: "cameraZoom" }];
+                  });
+                  setBoxes((prev) => removeAt(x, y, prev));
+                  setGoals((prev) => removeAt(x, y, prev));
+                  setPlayer((prev) =>
+                    prev?.x === x && prev?.y === y ? null : prev,
+                  );
+
+                  // Store the zoom value
+                  setCameraZoomTriggers((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.set(`${x},${y}`, zoomValue);
+                    return newMap;
+                  });
+
+                  setShowZoomInput(false);
+                  setPendingZoomPosition(null);
+                  setZoomInputValue("2.0");
+                }}
+              >
+                <Text style={styles.modalSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       )}
@@ -1637,60 +1617,43 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     textAlign: "center",
   },
-  areaList: {
-    maxHeight: 300,
-  },
-  areaOption: {
-    backgroundColor: "#3a3a3a",
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 10,
-    alignItems: "center",
-  },
-  areaOptionText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
   modalCancelButton: {
     backgroundColor: "#555",
     padding: 12,
     borderRadius: 8,
-    marginTop: 10,
     alignItems: "center",
+    flex: 1,
+    marginRight: 5,
   },
   modalCancelText: {
     color: "white",
     fontSize: 14,
     fontWeight: "bold",
   },
-  cameraSection: {
-    backgroundColor: "#2a2a2a",
-    padding: 8,
-    borderRadius: 6,
-    marginBottom: 10,
-  },
-  autoCalcButton: {
+  modalSaveButton: {
     backgroundColor: "#4CAF50",
-    padding: 8,
-    borderRadius: 4,
+    padding: 12,
+    borderRadius: 8,
     alignItems: "center",
-    marginTop: 6,
+    flex: 1,
+    marginLeft: 5,
   },
-  autoCalcButtonText: {
+  modalSaveText: {
     color: "white",
-    fontSize: 10,
+    fontSize: 14,
     fontWeight: "bold",
   },
-  clearCameraButton: {
-    backgroundColor: "#555",
-    padding: 6,
-    borderRadius: 4,
-    alignItems: "center",
-    marginTop: 4,
+  modalButtonRow: {
+    flexDirection: "row",
+    marginTop: 15,
   },
-  clearCameraButtonText: {
+  zoomInput: {
+    backgroundColor: "#3a3a3a",
     color: "white",
-    fontSize: 9,
+    padding: 15,
+    borderRadius: 8,
+    fontSize: 18,
+    textAlign: "center",
+    marginTop: 10,
   },
 });

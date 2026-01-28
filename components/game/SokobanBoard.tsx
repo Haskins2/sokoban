@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { Dimensions, Image, StyleSheet, View, Text } from "react-native";
+import React, { useEffect, useMemo } from "react";
+import { Dimensions, Image, StyleSheet, Text, View } from "react-native";
 import Animated, {
   Easing,
   cancelAnimation,
@@ -36,6 +36,22 @@ const IMAGES = {
   doorOpenLr: require("../../assets/images/tilesheet/door_open_lr.png"),
   doorClosedUd: require("../../assets/images/tilesheet/door_closed_ud.png"),
   doorOpenUd: require("../../assets/images/tilesheet/door_open_ud.png"),
+  finish: require("../../assets/images/tilesheet/Finish.png"),
+};
+
+const LEVEL_COMPLETE_IMAGES: { [key: number]: any } = {
+  1: require("../../assets/images/level_complete_text/level_1_complete.png"),
+  2: require("../../assets/images/level_complete_text/level_2_complete.png"),
+  3: require("../../assets/images/level_complete_text/level_3_complete.png"),
+  4: require("../../assets/images/level_complete_text/level_4_complete.png"),
+  5: require("../../assets/images/level_complete_text/level_5_complete.png"),
+  6: require("../../assets/images/level_complete_text/level_6_complete.png"),
+  7: require("../../assets/images/level_complete_text/level_7_complete.png"),
+};
+
+const CHAPTER_COMPLETE_IMAGES: { [key: number]: any } = {
+  1: require("../../assets/images/chapter_complete_text/chapter_1_complete.png"),
+  2: require("../../assets/images/chapter_complete_text/chapter_2_complete.png"),
 };
 
 interface Props {
@@ -45,6 +61,7 @@ interface Props {
   doorOpen: boolean;
   openDoors?: Set<number>;
   justCompletedSubLevel?: number | null;
+  isChapterComplete?: boolean;
 }
 
 const TILE_DURATION = 30;
@@ -66,7 +83,7 @@ const AnimatedDoor = ({
       // Simple fade from closed to open
       opacity.value = withSequence(
         withTiming(0, { duration: 200 }),
-        withTiming(1, { duration: 200 })
+        withTiming(1, { duration: 200 }),
       );
 
       // Hide door after 1 second
@@ -84,12 +101,10 @@ const AnimatedDoor = ({
     opacity: opacity.value,
   }));
 
-  const closedImage = door.orientation === 'lr'
-    ? IMAGES.doorClosedLr
-    : IMAGES.doorClosedUd;
-  const openImage = door.orientation === 'lr'
-    ? IMAGES.doorOpenLr
-    : IMAGES.doorOpenUd;
+  const closedImage =
+    door.orientation === "lr" ? IMAGES.doorClosedLr : IMAGES.doorClosedUd;
+  const openImage =
+    door.orientation === "lr" ? IMAGES.doorOpenLr : IMAGES.doorOpenUd;
 
   if (!visible) return null;
 
@@ -134,9 +149,9 @@ const AnimatedPlayer = ({
   useEffect(() => {
     if (lastMove && lastMove.playerPath.length > 1) {
       // Update player direction based on last move
-      if (lastMove.direction === 'left') {
+      if (lastMove.direction === "left") {
         setFacingLeft(true);
-      } else if (lastMove.direction === 'right') {
+      } else if (lastMove.direction === "right") {
         setFacingLeft(false);
       }
       // Keep same direction for up/down movements
@@ -283,8 +298,16 @@ export const SokobanBoard: React.FC<Props> = ({
   doorOpen,
   openDoors,
   justCompletedSubLevel,
+  isChapterComplete,
 }) => {
   const { width, height } = level;
+
+  // Debug logging
+  useEffect(() => {
+    console.log("Level finishPosition:", level.finishPosition);
+    console.log("Level chapterNumber:", level.chapterNumber);
+    console.log("isChapterComplete:", isChapterComplete);
+  }, [level.finishPosition, level.chapterNumber, isChapterComplete]);
 
   const screenWidth = Dimensions.get("window").width;
   const maxTileWidth = (screenWidth - 40) / width;
@@ -294,7 +317,7 @@ export const SokobanBoard: React.FC<Props> = ({
   const { cameraX, cameraY, cameraScale } = useCamera(
     level,
     gameState,
-    tileSize
+    tileSize,
   );
 
   const cameraStyle = useAnimatedStyle(() => ({
@@ -305,6 +328,29 @@ export const SokobanBoard: React.FC<Props> = ({
     ],
   }));
 
+  // Pre-compute lookup maps for O(1) access instead of O(n²) array searches
+  const tileMap = useMemo(() => {
+    const map = new Map<string, TileType>();
+    level.tiles?.forEach((t) =>
+      map.set(`${t.x},${t.y}`, t.tileType as TileType),
+    );
+    return map;
+  }, [level.tiles]);
+
+  const goalSet = useMemo(() => {
+    const set = new Set<string>();
+    level.goals.forEach((g) => set.add(`${g.x},${g.y}`));
+    return set;
+  }, [level.goals]);
+
+  const triggerMap = useMemo(() => {
+    const map = new Map<string, number>();
+    level.cameraTriggers?.forEach((t) =>
+      map.set(`${t.x},${t.y}`, t.targetZoom),
+    );
+    return map;
+  }, [level.cameraTriggers]);
+
   // Render static grid (walls, floors, goals)
   const renderGrid = () => {
     const rows = [];
@@ -312,17 +358,24 @@ export const SokobanBoard: React.FC<Props> = ({
     for (let y = 0; y < height; y++) {
       const row = [];
       for (let x = 0; x < width; x++) {
-        const isGoal = level.goals.some((g) => g.x === x && g.y === y);
+        const key = `${x},${y}`;
+        const isGoal = goalSet.has(key);
+        const isFinish =
+          level.finishPosition &&
+          level.finishPosition.x === x &&
+          level.finishPosition.y === y;
 
-        // Find the tile at this position
-        const tile = level.tiles?.find((t) => t.x === x && t.y === y);
-        const tileType = (tile?.tileType as TileType) || "floor";
+        // Get the tile type at this position using O(1) lookup
+        const tileType = tileMap.get(key) || "floor";
 
-        // Camera trigger tiles render as floor with special indicator
-        const isCameraTrigger = tileType === "cameraFollow" || tileType === "cameraLockArea";
-        const displayTileType = isCameraTrigger ? "floor" : tileType;
+        // Camera zoom trigger tiles render as floor with special indicator
+        const isCameraZoom = tileType === "cameraZoom";
+        const displayTileType = isCameraZoom ? "floor" : tileType;
         const tileImage = IMAGES[displayTileType as keyof typeof IMAGES];
         const isWall = displayTileType !== "floor";
+
+        // Get zoom value for this trigger if it exists using O(1) lookup
+        const zoomValue = isCameraZoom ? triggerMap.get(key) : undefined;
 
         row.push(
           <View key={`${x}-${y}`} style={{ width: tileSize, height: tileSize }}>
@@ -345,15 +398,39 @@ export const SokobanBoard: React.FC<Props> = ({
                 resizeMode="stretch"
               />
             )}
-            {isCameraTrigger && (
+            {isFinish && (
+              <Image
+                source={IMAGES.finish}
+                style={{
+                  width: tileSize,
+                  height: tileSize,
+                }}
+                resizeMode="stretch"
+              />
+            )}
+            {isCameraZoom && (
               <View
                 style={{
                   width: tileSize,
                   height: tileSize,
                   borderWidth: 2,
-                  borderColor: tileType === "cameraFollow" ? "rgba(0, 255, 0, 0.6)" : "rgba(0, 150, 255, 0.6)",
+                  borderColor: "rgba(255, 165, 0, 0.8)",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
-              />
+              >
+                {zoomValue !== undefined && (
+                  <Text
+                    style={{
+                      color: "rgba(255, 165, 0, 0.9)",
+                      fontSize: 10,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {zoomValue}x
+                  </Text>
+                )}
+              </View>
             )}
           </View>,
         );
@@ -370,11 +447,25 @@ export const SokobanBoard: React.FC<Props> = ({
   return (
     <View style={styles.container}>
       {/* Completion message overlay */}
-      {justCompletedSubLevel !== null && justCompletedSubLevel !== undefined && (
+      {justCompletedSubLevel !== null &&
+        justCompletedSubLevel !== undefined && (
+          <View style={styles.completionOverlay}>
+            <Image
+              source={LEVEL_COMPLETE_IMAGES[justCompletedSubLevel]}
+              style={styles.completionImage}
+              resizeMode="contain"
+            />
+          </View>
+        )}
+
+      {/* Chapter complete message overlay */}
+      {isChapterComplete && level.chapterNumber && CHAPTER_COMPLETE_IMAGES[level.chapterNumber] && (
         <View style={styles.completionOverlay}>
-          <Text style={styles.completionText}>
-            Level {justCompletedSubLevel} Complete!
-          </Text>
+          <Image
+            source={CHAPTER_COMPLETE_IMAGES[level.chapterNumber]}
+            style={styles.completionImage}
+            resizeMode="contain"
+          />
         </View>
       )}
 
@@ -393,18 +484,19 @@ export const SokobanBoard: React.FC<Props> = ({
           )}
 
           {/* Door Layer - Sub-level doors */}
-          {level.subLevels && level.subLevels.map((area) => {
-            if (!area.door) return null;
-            const isDoorOpen = openDoors?.has(area.id) ?? false;
-            return (
-              <AnimatedDoor
-                key={area.id}
-                door={area.door}
-                doorOpen={isDoorOpen}
-                tileSize={tileSize}
-              />
-            );
-          })}
+          {level.subLevels &&
+            level.subLevels.map((area) => {
+              if (!area.door) return null;
+              const isDoorOpen = openDoors?.has(area.id) ?? false;
+              return (
+                <AnimatedDoor
+                  key={area.id}
+                  door={area.door}
+                  doorOpen={isDoorOpen}
+                  tileSize={tileSize}
+                />
+              );
+            })}
 
           {/* Dynamic Layer */}
           {gameState.boxes.map((box, i) => (
@@ -431,10 +523,7 @@ export const SokobanBoard: React.FC<Props> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  container: {},
   row: {
     flexDirection: "row",
   },
@@ -450,20 +539,15 @@ const styles = StyleSheet.create({
   },
   completionOverlay: {
     position: "absolute",
-    top: 40,
+    top: -200,
     left: 0,
     right: 0,
     zIndex: 100,
     alignItems: "center",
+    paddingTop: 20,
   },
-  completionText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#4CAF50",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    overflow: "hidden",
+  completionImage: {
+    width: "80%",
+    height: 80,
   },
 });

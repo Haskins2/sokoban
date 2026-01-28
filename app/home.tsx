@@ -1,16 +1,9 @@
 import { UserMenu } from "@/components/UserMenu";
 import { useUserProgress } from "@/contexts/UserProgressContext";
-import {
-  Canvas,
-  Image as SkiaImage,
-  useImage,
-} from "@shopify/react-native-skia";
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { doc, getDoc } from "firebase/firestore";
 import {
-  ImageBackground,
-  Platform,
+  Image,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -20,14 +13,6 @@ import { db } from "../firebaseConfig";
 export default function HomeScreen() {
   const router = useRouter();
   const { getNextIncompleteLevel } = useUserProgress();
-
-  const logoImage = useImage(
-    require("../assets/images/app_logo_large_350.png"),
-  );
-  const startImage = useImage(require("../assets/images/START.png"));
-  const levelSelectImage = useImage(
-    require("../assets/images/LEVEL_SELECT.png"),
-  );
 
   const handlePlayClick = async () => {
     const nextLevel = getNextIncompleteLevel();
@@ -54,84 +39,32 @@ export default function HomeScreen() {
   };
 
   return (
-    <ImageBackground
-      source={require("../assets/images/background.png")}
-      style={styles.container}
-      resizeMode="cover"
-    >
+    <View style={styles.container}>
       <UserMenu />
-      {Platform.OS === "web" ? (
-        <Image
-          source={require("../assets/images/app_logo_large_350.png")}
-          style={styles.logo}
-          contentFit="contain"
-          transition={0}
-        />
-      ) : (
-        <Canvas style={styles.logo}>
-          {logoImage && (
-            <SkiaImage
-              image={logoImage}
-              x={0}
-              y={0}
-              width={118 * 3.1}
-              height={49 * 3.5}
-              fit="contain"
-            />
-          )}
-        </Canvas>
-      )}
+      <Image
+        source={require("../assets/images/app_logo_large_350.png")}
+        style={styles.logo}
+        resizeMode="contain"
+      />
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity onPress={handlePlayClick}>
-          {Platform.OS === "web" ? (
-            <Image
-              source={require("../assets/images/START.png")}
-              style={styles.startButton}
-              contentFit="contain"
-              transition={0}
-            />
-          ) : (
-            <Canvas style={styles.startButton} pointerEvents="none">
-              {startImage && (
-                <SkiaImage
-                  image={startImage}
-                  x={0}
-                  y={0}
-                  width={95 * 3}
-                  height={23 * 3}
-                  fit="contain"
-                />
-              )}
-            </Canvas>
-          )}
+          <Image
+            source={require("../assets/images/START.png")}
+            style={styles.startButton}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push("/level_select")}>
-          {Platform.OS === "web" ? (
-            <Image
-              source={require("../assets/images/LEVEL_SELECT.png")}
-              style={styles.levelSelectButton}
-              contentFit="contain"
-              transition={0}
-            />
-          ) : (
-            <Canvas style={styles.levelSelectButton} pointerEvents="none">
-              {levelSelectImage && (
-                <SkiaImage
-                  image={levelSelectImage}
-                  x={0}
-                  y={0}
-                  width={95 * 3}
-                  height={22 * 3}
-                  fit="contain"
-                />
-              )}
-            </Canvas>
-          )}
+          <Image
+            source={require("../assets/images/LEVEL_SELECT.png")}
+            style={styles.levelSelectButton}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
       </View>
-    </ImageBackground>
+    </View>
   );
 }
 
@@ -139,24 +72,25 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#1a1a1a",
+    justifyContent: "flex-start",
+    backgroundColor: "transparent",
   },
   logo: {
     width: 118 * 3.2,
     height: 49 * 3.3,
-    marginBottom: 50,
+    marginTop: 100,
+    marginBottom: 300,
   },
   buttonContainer: {
     gap: 20,
     alignItems: "center",
   },
   startButton: {
-    width: 95 * 3,
-    height: 23 * 3,
+    width: 95 * 3.5,
+    height: 23 * 3.5,
   },
   levelSelectButton: {
-    width: 95 * 3,
-    height: 22 * 3,
+    width: 95 * 3.5,
+    height: 22 * 3.5,
   },
 });

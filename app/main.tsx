@@ -1,5 +1,5 @@
 import { LEVELS } from "@/assets/levels";
-import { Dpad } from "@/components/game/Dpad";
+import { GameGestureWrapper } from "@/components/game/GameGestureWrapper";
 import { SokobanBoard } from "@/components/game/SokobanBoard";
 import { LevelConfig } from "@/components/game/types";
 import { useSokoban } from "@/components/game/useSokoban";
@@ -18,7 +18,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Image } from "expo-image";
 import { db } from "../firebaseConfig";
 
 const INITIAL_LEVEL = LEVELS[0];
@@ -28,7 +27,6 @@ export default function HomeScreen() {
   const { levelData } = useLocalSearchParams();
   const [level, setLevel] = useState<LevelConfig | null>(null);
   const [loading, setLoading] = useState(false);
-  const [winDismissed, setWinDismissed] = useState(false);
   const { markLevelComplete } = useUserProgress();
 
   useEffect(() => {
@@ -51,7 +49,8 @@ export default function HomeScreen() {
       const docRef = doc(db, "levels", `level_${num}`);
       const snap = await getDoc(docRef);
       if (snap.exists()) {
-        setLevel(snap.data() as LevelConfig);
+        const levelData = snap.data() as LevelConfig;
+        setLevel(levelData);
       } else {
         Alert.alert("Finished", "No more levels!");
         // If we were trying to go next, maybe stay on current?
@@ -64,30 +63,22 @@ export default function HomeScreen() {
     }
   };
 
-  const handleNext = () => {
-    if (safeLevel && safeLevel.levelNumber) {
-      setWinDismissed(false);
-      fetchLevel(safeLevel.levelNumber + 1);
-    }
-  };
-
   const handleReset = () => {
-    setWinDismissed(false);
     reset();
   };
 
   // Safe fallback for hook
   const safeLevel = level || INITIAL_LEVEL;
-  const { gameState, move, reset, undo, isWon, lastMove } =
+  const [justCompletedSubLevel, setJustCompletedSubLevel] = useState<number | null>(null);
+
+  const { gameState, move, reset, undo, isWon, lastMove, doorOpen, openDoors, completedSubLevels } =
     useSokoban(safeLevel);
 
   const safeMove = useCallback(
     (direction: "up" | "down" | "left" | "right") => {
-      if (!isWon) {
-        move(direction);
-      }
+      move(direction);
     },
-    [move, isWon],
+    [move],
   );
 
   // Mark level as complete when won
@@ -96,6 +87,46 @@ export default function HomeScreen() {
       markLevelComplete(safeLevel.levelNumber);
     }
   }, [isWon, safeLevel.levelNumber, markLevelComplete]);
+
+  // Track completed sub-levels and show notification
+  const [prevCompletedSubLevels, setPrevCompletedSubLevels] = useState<number[]>([]);
+  useEffect(() => {
+    if (completedSubLevels && completedSubLevels.length > prevCompletedSubLevels.length) {
+      // Find newly completed sub-levels
+      const newlyCompleted = completedSubLevels.filter(
+        id => !prevCompletedSubLevels.includes(id)
+      );
+      if (newlyCompleted.length > 0) {
+        setJustCompletedSubLevel(newlyCompleted[0]);
+        setTimeout(() => setJustCompletedSubLevel(null), 2000);
+      }
+      setPrevCompletedSubLevels(completedSubLevels);
+    }
+  }, [completedSubLevels, prevCompletedSubLevels]);
+
+  // Advance level when player enters open door
+  useEffect(() => {
+    if (!safeLevel.subLevels || safeLevel.subLevels.length === 0) {
+      // Legacy mode: single door
+      if (doorOpen && safeLevel.door &&
+          gameState.player.x === safeLevel.door.x &&
+          gameState.player.y === safeLevel.door.y) {
+        if (safeLevel.levelNumber) {
+          fetchLevel(safeLevel.levelNumber + 1);
+        }
+      }
+    } else {
+      // Chapter mode: check final sub-level's door
+      const finalArea = safeLevel.subLevels[safeLevel.subLevels.length - 1];
+      if (openDoors && openDoors.has(finalArea.id) && finalArea.door &&
+          gameState.player.x === finalArea.door.x &&
+          gameState.player.y === finalArea.door.y) {
+        if (safeLevel.levelNumber) {
+          fetchLevel(safeLevel.levelNumber + 1);
+        }
+      }
+    }
+  }, [doorOpen, openDoors, gameState.player, safeLevel.door, safeLevel.subLevels, safeLevel.levelNumber]);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -146,49 +177,19 @@ export default function HomeScreen() {
         <MaterialIcons name="home" size={32} color="white" />
       </TouchableOpacity>
       <UserMenu />
-      <Image
-        source={require("../assets/images/app_logo_long.png")}
-        style={styles.logo}
-        contentFit="contain"
-      />
-      <View style={styles.gameContainer}>
-        <SokobanBoard
-          level={safeLevel}
-          gameState={gameState}
-          lastMove={lastMove}
-        />
-      </View>
-      <Dpad onMove={safeMove} />
-      {isWon && !winDismissed && (
-        <View style={styles.winOverlay}>
-          <View style={styles.winContainer}>
-            <TouchableOpacity
-              onPress={() => setWinDismissed(true)}
-              style={styles.closeButton}
-            >
-              <Text style={styles.closeButtonText}>X</Text>
-            </TouchableOpacity>
-            <Text style={styles.winText}>You Win!</Text>
-            <View style={styles.winButtons}>
-              <TouchableOpacity
-                onPress={handleReset}
-                style={styles.replayButton}
-              >
-                <View style={styles.replayButtonContent}>
-                  <Text style={styles.replayButtonText}>Replay</Text>
-                  <MaterialIcons name="replay" size={18} color="white" />
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleNext} style={styles.nextButton}>
-                <View style={styles.nextButtonContent}>
-                  <Text style={styles.nextButtonText}>Next Level</Text>
-                  <MaterialIcons name="arrow-forward" size={18} color="white" />
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
+
+      <GameGestureWrapper onMove={safeMove}>
+        <View style={styles.gameContainer}>
+          <SokobanBoard
+            level={safeLevel}
+            gameState={gameState}
+            lastMove={lastMove}
+            doorOpen={doorOpen}
+            openDoors={openDoors}
+            justCompletedSubLevel={justCompletedSubLevel}
+          />
         </View>
-      )}
+      </GameGestureWrapper>
       <View style={styles.buttonContainer}>
         <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
           <Text style={styles.resetButtonText}>Reset Level</Text>
@@ -221,7 +222,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-start",
     paddingTop: 60,
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "transparent",
   },
   homeButton: {
     position: "absolute",
@@ -230,14 +231,8 @@ const styles = StyleSheet.create({
     padding: 10,
     zIndex: 10,
   },
-  logo: {
-    width: 300,
-    height: 80,
-    marginBottom: 20,
-    marginTop: 10,
-  },
   gameContainer: {
-    marginBottom: 20,
+    marginTop: 200,
   },
   winText: {
     fontSize: 24,
@@ -248,6 +243,7 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: "row",
     marginTop: 30,
+    marginBottom: 50,
   },
   resetButton: {
     paddingHorizontal: 20,

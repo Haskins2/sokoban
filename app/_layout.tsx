@@ -7,8 +7,8 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { StyleSheet } from "react-native";
-import { Image } from "expo-image";
+import { Image, StyleSheet } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -21,6 +21,23 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
+
+// Custom theme with transparent background
+const CustomDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: "transparent",
+  },
+};
+
+const CustomDefaultTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: "transparent",
+  },
+};
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -57,27 +74,28 @@ export default function RootLayout() {
   });
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
       <AuthProvider>
         <UserProgressProvider>
           <ThemeProvider
-            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+            value={
+              colorScheme === "dark" ? CustomDarkTheme : CustomDefaultTheme
+            }
           >
-            <Stack>
-              <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="home" options={{ headerShown: false }} />
-              <Stack.Screen name="main" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="level_select"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="level_editor"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen name="profile" options={{ headerShown: false }} />
-              <Stack.Screen name="login" options={{ headerShown: false }} />
-              <Stack.Screen name="signup" options={{ headerShown: false }} />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: "transparent" },
+              }}
+            >
+              <Stack.Screen name="index" />
+              <Stack.Screen name="home" />
+              <Stack.Screen name="main" />
+              <Stack.Screen name="level_select" />
+              <Stack.Screen name="level_editor" />
+              <Stack.Screen name="profile" />
+              <Stack.Screen name="login" />
+              <Stack.Screen name="signup" />
               <Stack.Screen
                 name="modal"
                 options={{ presentation: "modal", title: "Modal" }}
@@ -93,11 +111,11 @@ export default function RootLayout() {
           <Image
             source={require("../assets/images/app_logo.png")}
             style={styles.splashLogo}
-            contentFit="contain"
+            resizeMode="contain"
           />
         </Animated.View>
       )}
-    </>
+    </GestureHandlerRootView>
   );
 }
 
@@ -110,7 +128,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1a1a1a",
+    backgroundColor: "#000",
     zIndex: 9999,
   },
   splashLogo: {

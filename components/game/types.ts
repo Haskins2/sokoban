@@ -71,6 +71,7 @@ export type LevelConfig = {
   subLevels?: SubLevelArea[]; // Chapter mode: multiple puzzle areas
   cameraTriggers?: CameraTrigger[]; // Camera control tiles
   initialCameraState?: CameraState; // Starting camera mode
+  followZoom?: number; // Zoom level for follow mode (default: 1.0)
 };
 
 export type GameState = {

@@ -3,18 +3,16 @@ import { GameGestureWrapper } from "@/components/game/GameGestureWrapper";
 import { SokobanBoard } from "@/components/game/SokobanBoard";
 import { LevelConfig } from "@/components/game/types";
 import { useSokoban } from "@/components/game/useSokoban";
-import { UserMenu } from "@/components/UserMenu";
 import { useUserProgress } from "@/contexts/UserProgressContext";
-import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { doc, getDoc } from "firebase/firestore";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Platform,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -223,13 +221,22 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        onPress={() => router.push("/home")}
-        style={styles.homeButton}
-      >
-        <MaterialIcons name="home" size={32} color="white" />
-      </TouchableOpacity>
-      <UserMenu />
+      <View style={styles.headerContainer}>
+        <TouchableOpacity onPress={() => router.push("/home")}>
+          <Image
+            source={require("../assets/images/main_menu/home_icon.png")}
+            style={styles.headerIcon}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push("/profile")}>
+          <Image
+            source={require("../assets/images/main_menu/profile_icon.png")}
+            style={styles.headerIcon}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      </View>
 
       <GameGestureWrapper onMove={safeMove}>
         <View style={styles.gameContainer}>
@@ -246,24 +253,18 @@ export default function HomeScreen() {
       </GameGestureWrapper>
       <View style={styles.buttonContainer}>
         <TouchableOpacity onPress={handleReset} style={styles.resetButton}>
-          <Text style={styles.resetButtonText}>Reset Chapter</Text>
+          <Image
+            source={require("../assets/images/main_buttons/reset_chapter.png")}
+            style={styles.resetButtonImage}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
         <TouchableOpacity onPress={undo} style={styles.undoButton}>
-          <Text style={styles.undoButtonText}>Undo</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.navButtons}>
-        <TouchableOpacity
-          onPress={() => router.push("/level_select")}
-          style={styles.navButton}
-        >
-          <Text style={styles.navButtonText}>Select Level</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => router.push("/level_editor")}
-          style={styles.navButton}
-        >
-          <Text style={styles.navButtonText}>Level Editor</Text>
+          <Image
+            source={require("../assets/images/main_buttons/undo.png")}
+            style={styles.undoButtonImage}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
       </View>
     </View>
@@ -275,59 +276,38 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "flex-start",
-    paddingTop: 60,
+    paddingTop: 0,
     backgroundColor: "transparent",
   },
-  homeButton: {
-    position: "absolute",
-    top: 20,
-    left: 20,
-    padding: 10,
-    zIndex: 10,
+  headerContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    paddingHorizontal: 20,
+    marginBottom: 20,
+    zIndex: 1000,
+  },
+  headerIcon: {
+    width: 30,
+    height: 30,
   },
   gameContainer: {
-    marginTop: 200,
+    marginTop: 100,
   },
   buttonContainer: {
     flexDirection: "row",
-    marginTop: 30,
     marginBottom: 50,
+    gap: 20,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  resetButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: "#333",
-    borderRadius: 8,
-    marginRight: 10,
+  resetButtonImage: {
+    width: 200,
+    height: 80,
   },
-  resetButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  undoButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: "#555",
-    borderRadius: 8,
-  },
-  undoButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  navButtons: {
-    flexDirection: "row",
-    marginTop: 20,
-    gap: 10,
-  },
-  navButton: {
-    padding: 10,
-    backgroundColor: "#2196F3",
-    borderRadius: 8,
-  },
-  navButtonText: {
-    color: "white",
-    fontWeight: "bold",
+  undoButtonImage: {
+    width: 150,
+    height: 30,
+    paddingBottom: 1,
   },
 });

@@ -459,15 +459,17 @@ export const SokobanBoard: React.FC<Props> = ({
         )}
 
       {/* Chapter complete message overlay */}
-      {isChapterComplete && level.chapterNumber && CHAPTER_COMPLETE_IMAGES[level.chapterNumber] && (
-        <View style={styles.completionOverlay}>
-          <Image
-            source={CHAPTER_COMPLETE_IMAGES[level.chapterNumber]}
-            style={styles.completionImage}
-            resizeMode="contain"
-          />
-        </View>
-      )}
+      {isChapterComplete &&
+        level.chapterNumber &&
+        CHAPTER_COMPLETE_IMAGES[level.chapterNumber] && (
+          <View style={styles.completionOverlay}>
+            <Image
+              source={CHAPTER_COMPLETE_IMAGES[level.chapterNumber]}
+              style={styles.completionImage}
+              resizeMode="contain"
+            />
+          </View>
+        )}
 
       <Animated.View style={cameraStyle}>
         <View style={{ width: width * tileSize, height: height * tileSize }}>
@@ -539,7 +541,7 @@ const styles = StyleSheet.create({
   },
   completionOverlay: {
     position: "absolute",
-    top: -200,
+    top: -120,
     left: 0,
     right: 0,
     zIndex: 100,

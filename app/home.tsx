@@ -1,13 +1,7 @@
-import { UserMenu } from "@/components/UserMenu";
 import { useUserProgress } from "@/contexts/UserProgressContext";
 import { useRouter } from "expo-router";
 import { doc, getDoc } from "firebase/firestore";
-import {
-  Image,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import { db } from "../firebaseConfig";
 
 export default function HomeScreen() {
@@ -40,9 +34,25 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <UserMenu />
+      <View style={styles.headerContainer}>
+        <TouchableOpacity onPress={() => router.push("/home")}>
+          <Image
+            source={require("../assets/images/main_menu/home_icon.png")}
+            style={styles.headerIcon}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push("/profile")}>
+          <Image
+            source={require("../assets/images/main_menu/profile_icon.png")}
+            style={styles.headerIcon}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      </View>
+
       <Image
-        source={require("../assets/images/app_logo_large_350.png")}
+        source={require("../assets/images/main_menu/main_title_long.png")}
         style={styles.logo}
         resizeMode="contain"
       />
@@ -50,16 +60,16 @@ export default function HomeScreen() {
       <View style={styles.buttonContainer}>
         <TouchableOpacity onPress={handlePlayClick}>
           <Image
-            source={require("../assets/images/START.png")}
+            source={require("../assets/images/main_menu/start_text_design.png")}
             style={styles.startButton}
             resizeMode="contain"
           />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push("/level_select")}>
+        <TouchableOpacity onPress={() => router.push("/chapter_select")}>
           <Image
-            source={require("../assets/images/LEVEL_SELECT.png")}
-            style={styles.levelSelectButton}
+            source={require("../assets/images/main_menu/chapter_select_text.png")}
+            style={styles.chapterSelectButton}
             resizeMode="contain"
           />
         </TouchableOpacity>
@@ -75,22 +85,33 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     backgroundColor: "transparent",
   },
+  headerContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  headerIcon: {
+    width: 30,
+    height: 40,
+  },
   logo: {
-    width: 118 * 3.2,
-    height: 49 * 3.3,
-    marginTop: 100,
-    marginBottom: 300,
+    width: 350,
+    height: 60,
+    marginTop: 10,
+    marginBottom: 200,
   },
   buttonContainer: {
     gap: 20,
     alignItems: "center",
   },
   startButton: {
-    width: 95 * 3.5,
-    height: 23 * 3.5,
+    width: 350,
+    height: 60,
   },
-  levelSelectButton: {
-    width: 95 * 3.5,
-    height: 22 * 3.5,
+  chapterSelectButton: {
+    width: 350,
+    height: 60,
   },
 });

@@ -96,7 +96,10 @@ export const useSokoban = (level: LevelConfig) => {
     } else {
       // Chapter mode: open doors for completed sub-levels
       // Only update if the completed sub-levels have actually changed
-      if (JSON.stringify(completedSubLevels) !== JSON.stringify(currentCompletedSubLevels)) {
+      if (
+        JSON.stringify(completedSubLevels) !==
+        JSON.stringify(currentCompletedSubLevels)
+      ) {
         setCompletedSubLevels(currentCompletedSubLevels);
       }
 
@@ -252,7 +255,9 @@ export const useSokoban = (level: LevelConfig) => {
             currentState.player.x === level.finishPosition.x &&
             currentState.player.y === level.finishPosition.y
           ) {
-            console.log("Player reached finish tile! Setting isChapterComplete to true");
+            console.log(
+              "Player reached finish tile! Setting isChapterComplete to true",
+            );
             console.log("Finish position:", level.finishPosition);
             console.log("Player position:", currentState.player);
             console.log("Chapter number:", level.chapterNumber);

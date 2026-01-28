@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import {
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import type { GameState, LevelConfig } from "./types";
 
 export const useCamera = (
@@ -8,7 +12,7 @@ export const useCamera = (
   tileSize: number,
 ) => {
   // Current zoom (can change via triggers)
-  const [currentZoom, setCurrentZoom] = useState(level.followZoom ?? 2.0);
+  const [currentZoom, setCurrentZoom] = useState(level.followZoom ?? 3.0);
 
   // Calculate initial camera position centered on player
   const getInitialPosition = () => {
@@ -34,9 +38,13 @@ export const useCamera = (
     // Check for zoom triggers
     if (level.cameraTriggers) {
       const trigger = level.cameraTriggers.find(
-        (t) => t.x === gameState.player.x && t.y === gameState.player.y
+        (t) => t.x === gameState.player.x && t.y === gameState.player.y,
       );
-      if (trigger && "targetZoom" in trigger && trigger.targetZoom !== currentZoom) {
+      if (
+        trigger &&
+        "targetZoom" in trigger &&
+        trigger.targetZoom !== currentZoom
+      ) {
         setCurrentZoom(trigger.targetZoom);
       }
     }

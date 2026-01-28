@@ -85,13 +85,16 @@ export default function RootLayout() {
             <Stack
               screenOptions={{
                 headerShown: false,
-                contentStyle: { backgroundColor: "transparent" },
+                contentStyle: {
+                  backgroundColor: "transparent",
+                  paddingTop: 60,
+                },
               }}
             >
               <Stack.Screen name="index" />
               <Stack.Screen name="home" />
               <Stack.Screen name="main" />
-              <Stack.Screen name="level_select" />
+              <Stack.Screen name="chapter_select" />
               <Stack.Screen name="level_editor" />
               <Stack.Screen name="profile" />
               <Stack.Screen name="login" />

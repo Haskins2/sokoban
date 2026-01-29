@@ -361,7 +361,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <TimerDisplay timerState={timerState} />
+      <TimerDisplay timerState={timerState} isComplete={isChapterComplete} />
 
       <GameGestureWrapper onMove={safeMove}>
         <View style={styles.gameContainer}>

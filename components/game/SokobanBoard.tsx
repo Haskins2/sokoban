@@ -146,44 +146,51 @@ const AnimatedPlayer = ({
   const svY = useSharedValue(y * tileSize);
   const [facingLeft, setFacingLeft] = React.useState(false);
 
-  useEffect(() => {
-    if (lastMove && lastMove.playerPath.length > 1) {
-      // Update player direction based on last move
-      if (lastMove.direction === "left") {
-        setFacingLeft(true);
-      } else if (lastMove.direction === "right") {
-        setFacingLeft(false);
-      }
-      // Keep same direction for up/down movements
-
-      // Animate sequence
-      const path = lastMove.playerPath;
-      const startPos = path[0];
-      svX.value = startPos.x * tileSize;
-      svY.value = startPos.y * tileSize;
-
-      const sequenceX = path.slice(1).map((p) =>
-        withTiming(p.x * tileSize, {
-          duration: TILE_DURATION,
-          easing: Easing.linear,
-        }),
-      );
-      const sequenceY = path.slice(1).map((p) =>
-        withTiming(p.y * tileSize, {
-          duration: TILE_DURATION,
-          easing: Easing.linear,
-        }),
-      );
-
-      if (sequenceX.length) svX.value = withSequence(...sequenceX);
-      if (sequenceY.length) svY.value = withSequence(...sequenceY);
-    } else {
-      // Snap
-      cancelAnimation(svX);
-      cancelAnimation(svY);
-      svX.value = x * tileSize;
-      svY.value = y * tileSize;
+  const updatePlayerDirection = (direction: string | undefined) => {
+    if (direction === "left") {
+      setFacingLeft(true);
+    } else if (direction === "right") {
+      setFacingLeft(false);
     }
+  };
+
+  const animatePlayerSequence = (path: any[]) => {
+    const startPos = path[0];
+    svX.value = startPos.x * tileSize;
+    svY.value = startPos.y * tileSize;
+
+    const sequenceX = path.slice(1).map((p) =>
+      withTiming(p.x * tileSize, {
+        duration: TILE_DURATION,
+        easing: Easing.linear,
+      }),
+    );
+    const sequenceY = path.slice(1).map((p) =>
+      withTiming(p.y * tileSize, {
+        duration: TILE_DURATION,
+        easing: Easing.linear,
+      }),
+    );
+
+    if (sequenceX.length) svX.value = withSequence(...sequenceX);
+    if (sequenceY.length) svY.value = withSequence(...sequenceY);
+  };
+
+  const snapPlayer = () => {
+    cancelAnimation(svX);
+    cancelAnimation(svY);
+    svX.value = x * tileSize;
+    svY.value = y * tileSize;
+  };
+
+  useEffect(() => {
+    if (!lastMove || lastMove.playerPath.length <= 1) {
+      snapPlayer();
+      return;
+    }
+
+    updatePlayerDirection(lastMove.direction);
+    animatePlayerSequence(lastMove.playerPath);
   }, [lastMove, x, y, tileSize]);
 
   const style = useAnimatedStyle(() => ({

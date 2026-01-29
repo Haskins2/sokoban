@@ -1,8 +1,4 @@
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
+import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -17,10 +13,41 @@ import Animated, {
 
 import { AuthProvider } from "@/contexts/AuthContext";
 import { UserProgressProvider } from "@/contexts/UserProgressContext";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 
-// Prevent splash screen from auto-hiding
+// (initial loading screen)
 SplashScreen.preventAutoHideAsync();
+
+// Custom hook for loading screen functionality
+function useLoadingScreen() {
+  const [loadingVisible, setLoadingVisible] = useState(true);
+  const opacity = useSharedValue(1);
+
+  useEffect(() => {
+    async function hideLoading() {
+      // Wait minimum display time
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Hide the Expo loading screen
+      await SplashScreen.hideAsync();
+
+      // Trigger fade-out animation
+      opacity.value = withTiming(0, { duration: 400 });
+
+      // Hide loading after animation completes
+      setTimeout(() => {
+        setLoadingVisible(false);
+      }, 400);
+    }
+
+    hideLoading();
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return { loadingVisible, animatedStyle };
+}
 
 // Custom theme with transparent background
 const CustomDarkTheme = {
@@ -31,57 +58,14 @@ const CustomDarkTheme = {
   },
 };
 
-const CustomDefaultTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: "transparent",
-  },
-};
-
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [splashVisible, setSplashVisible] = useState(true);
-  const opacity = useSharedValue(1);
-
-  useEffect(() => {
-    async function prepare() {
-      try {
-        // Minimum display time of 500ms
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      } catch (e) {
-        console.warn(e);
-      } finally {
-        await SplashScreen.hideAsync();
-
-        // Trigger fade-out animation
-        opacity.value = withTiming(0, { duration: 400 });
-
-        // Hide splash after animation completes
-        setTimeout(() => {
-          setSplashVisible(false);
-        }, 400);
-      }
-    }
-
-    prepare();
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: opacity.value,
-    };
-  });
+  const { loadingVisible, animatedStyle } = useLoadingScreen();
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#000" }}>
       <AuthProvider>
         <UserProgressProvider>
-          <ThemeProvider
-            value={
-              colorScheme === "dark" ? CustomDarkTheme : CustomDefaultTheme
-            }
-          >
+          <ThemeProvider value={CustomDarkTheme}>
             <Stack
               screenOptions={{
                 headerShown: false,
@@ -109,11 +93,11 @@ export default function RootLayout() {
         </UserProgressProvider>
       </AuthProvider>
 
-      {splashVisible && (
-        <Animated.View style={[styles.splashContainer, animatedStyle]}>
+      {loadingVisible && (
+        <Animated.View style={[styles.loadingContainer, animatedStyle]}>
           <Image
             source={require("../assets/images/app_logo.png")}
-            style={styles.splashLogo}
+            style={styles.loadingLogo}
             resizeMode="contain"
           />
         </Animated.View>
@@ -123,7 +107,7 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  splashContainer: {
+  loadingContainer: {
     position: "absolute",
     top: 0,
     left: 0,
@@ -134,7 +118,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
     zIndex: 9999,
   },
-  splashLogo: {
+  loadingLogo: {
     width: 250,
     height: 250,
   },

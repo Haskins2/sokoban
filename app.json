@@ -1,15 +1,16 @@
 {
   "expo": {
-    "name": "sokoban",
-    "slug": "sokoban",
+    "name": "Zero Friction",
+    "slug": "zero-friction",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "sokoban",
+    "scheme": "zero-friction",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.haskins2.zerofriction"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +20,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.haskins2.zerofriction"
     },
     "web": {
       "output": "static",
@@ -30,12 +32,12 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/app_logo.png",
+          "imageWidth": 250,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#1a1a1a",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#1a1a1a"
           }
         }
       ],

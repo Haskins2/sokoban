@@ -1,5 +1,12 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { LevelConfig, Position, Direction, GameState, MoveSequence } from './types';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+    Direction,
+    GameState,
+    LevelConfig,
+    MoveSequence,
+    Position,
+    TimerState,
+} from "./types";
 
 export const useSokoban = (level: LevelConfig) => {
   const [gameState, setGameState] = useState<GameState>({
@@ -8,8 +15,19 @@ export const useSokoban = (level: LevelConfig) => {
   });
   const [isMoving, setIsMoving] = useState(false);
   const [lastMove, setLastMove] = useState<MoveSequence | null>(null);
+  const [doorOpen, setDoorOpen] = useState(false);
+  const [openDoors, setOpenDoors] = useState<Set<number>>(new Set());
+  const [completedSubLevels, setCompletedSubLevels] = useState<number[]>([]);
+  const [isChapterComplete, setIsChapterComplete] = useState(false);
+  const [timerState, setTimerState] = useState<TimerState>({
+    startTime: null,
+    elapsedTime: 0,
+    isRunning: false,
+  });
 
   const historyRef = useRef<GameState[]>([]);
+  const animationFrameRef = useRef<number>();
+  const hasMovedRef = useRef(false);
 
   // Reset game state when level changes
   useEffect(() => {
@@ -19,103 +37,264 @@ export const useSokoban = (level: LevelConfig) => {
     });
     setIsMoving(false);
     setLastMove(null);
+    setDoorOpen(false);
+    setOpenDoors(new Set());
+    setCompletedSubLevels([]);
+    setIsChapterComplete(false);
+    setTimerState({
+      startTime: null,
+      elapsedTime: 0,
+      isRunning: false,
+    });
     historyRef.current = [];
+    hasMovedRef.current = false;
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
   }, [level]);
 
-  const isWon = !isMoving && level.goals.every(g => gameState.boxes.some(b => b.x === g.x && b.y === g.y));
-
-  const isWall = useCallback((pos: Position) => {
-    return level.walls.some(w => w.x === pos.x && w.y === pos.y);
+  // Pre-compute wall positions as a Set for O(1) lookups
+  const wallSet = useMemo(() => {
+    const set = new Set<string>();
+    level.walls.forEach((w) => set.add(`${w.x},${w.y}`));
+    return set;
   }, [level.walls]);
 
-  const getBoxIndex = useCallback((pos: Position, currentBoxes: Position[]) => {
-    return currentBoxes.findIndex(b => b.x === pos.x && b.y === pos.y);
-  }, []);
-
-  const move = useCallback((direction: Direction) => {
-    if (isMoving) return;
-    
-    let currentState = { ...gameState };
-    const startState = { ...gameState };
-    
-    const playerPath = [currentState.player];
-    let boxMovedIndex = -1;
-    const boxPath: Position[] = [];
-
-    let dx = 0;
-    let dy = 0;
-
-    switch (direction) {
-      case 'up': dy = -1; break;
-      case 'down': dy = 1; break;
-      case 'left': dx = -1; break;
-      case 'right': dx = 1; break;
+  // Check sub-level completion
+  const getSubLevelCompletion = useCallback(() => {
+    if (!level.subLevels || level.subLevels.length === 0) {
+      // Legacy single-level mode - use Set for O(1) box position lookups
+      const boxPositions = new Set(gameState.boxes.map((b) => `${b.x},${b.y}`));
+      const legacyIsWon = level.goals.every((g) =>
+        boxPositions.has(`${g.x},${g.y}`),
+      );
+      return { isWon: legacyIsWon, completedSubLevels: [] };
     }
 
-    let moved = false;
+    // Chapter mode: check each sub-level independently
+    const completed = level.subLevels.filter((area) => {
+      // Filter out invalid indices to prevent undefined access
+      const areaGoals = area.goalIndices
+        .map((i) => level.goals[i])
+        .filter((g) => g !== undefined);
+      const areaBoxes = area.boxIndices
+        .map((i) => gameState.boxes[i])
+        .filter((b) => b !== undefined);
 
-    while (true) {
-      const { player, boxes } = currentState;
-      const newPlayerPos = { x: player.x + dx, y: player.y + dy };
+      // If no valid goals, consider incomplete
+      if (areaGoals.length === 0) return false;
 
-      // Check wall collision for player
-      if (isWall(newPlayerPos)) {
-        break;
+      // Use Set for O(1) lookups instead of .some()
+      const areaBoxPositions = new Set(areaBoxes.map((b) => `${b.x},${b.y}`));
+
+      return areaGoals.every((g) => areaBoxPositions.has(`${g.x},${g.y}`));
+    });
+
+    return {
+      isWon: completed.length === level.subLevels.length,
+      completedSubLevels: completed.map((a) => a.id),
+    };
+  }, [level, gameState.boxes]);
+
+  const { isWon, completedSubLevels: currentCompletedSubLevels } =
+    getSubLevelCompletion();
+  const actualIsWon = !isMoving && isWon;
+
+  // Update completed sub-levels and open doors
+  useEffect(() => {
+    if (!level.subLevels || level.subLevels.length === 0) {
+      // Legacy mode: open single door when won
+      if (actualIsWon && !doorOpen) {
+        const timer = setTimeout(() => {
+          setDoorOpen(true);
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      // Chapter mode: open doors for completed sub-levels
+      // Only update if the completed sub-levels have actually changed
+      if (
+        JSON.stringify(completedSubLevels) !==
+        JSON.stringify(currentCompletedSubLevels)
+      ) {
+        setCompletedSubLevels(currentCompletedSubLevels);
       }
 
-      // Check box collision
-      const boxIndex = getBoxIndex(newPlayerPos, boxes);
-      if (boxIndex !== -1) {
-        // Trying to push a box
-        const newBoxPos = { x: newPlayerPos.x + dx, y: newPlayerPos.y + dy };
+      currentCompletedSubLevels.forEach((areaId) => {
+        if (!openDoors.has(areaId)) {
+          setTimeout(() => {
+            setOpenDoors((prev) => new Set(prev).add(areaId));
+          }, 300);
+        }
+      });
+    }
+  }, [
+    actualIsWon,
+    doorOpen,
+    level.subLevels,
+    currentCompletedSubLevels,
+    openDoors,
+    completedSubLevels,
+  ]);
 
-        // Check if box can move (not into wall or another box)
-        if (isWall(newBoxPos) || getBoxIndex(newBoxPos, boxes) !== -1) {
+  const isDoorBlocking = useCallback(
+    (pos: Position) => {
+      // Check legacy door
+      if (level.door && level.door.x === pos.x && level.door.y === pos.y) {
+        return !doorOpen;
+      }
+
+      // Check sub-level doors
+      if (level.subLevels) {
+        const area = level.subLevels.find(
+          (a) => a.door && a.door.x === pos.x && a.door.y === pos.y,
+        );
+        if (area) {
+          return !openDoors.has(area.id);
+        }
+      }
+
+      return false;
+    },
+    [level.door, level.subLevels, doorOpen, openDoors],
+  );
+
+  const isWall = useCallback(
+    (pos: Position) => {
+      return wallSet.has(`${pos.x},${pos.y}`) || isDoorBlocking(pos);
+    },
+    [wallSet, isDoorBlocking],
+  );
+
+  const getBoxIndex = useCallback((pos: Position, currentBoxes: Position[]) => {
+    return currentBoxes.findIndex((b) => b.x === pos.x && b.y === pos.y);
+  }, []);
+
+  const move = useCallback(
+    (direction: Direction) => {
+      if (isMoving) return;
+
+      let currentState = { ...gameState };
+      const startState = { ...gameState };
+
+      const playerPath = [currentState.player];
+      let boxMovedIndex = -1;
+      const boxPath: Position[] = [];
+
+      let dx = 0;
+      let dy = 0;
+
+      switch (direction) {
+        case "up":
+          dy = -1;
+          break;
+        case "down":
+          dy = 1;
+          break;
+        case "left":
+          dx = -1;
+          break;
+        case "right":
+          dx = 1;
+          break;
+      }
+
+      let moved = false;
+
+      while (true) {
+        const { player, boxes } = currentState;
+        const newPlayerPos = { x: player.x + dx, y: player.y + dy };
+
+        // Check wall collision for player
+        if (isWall(newPlayerPos)) {
           break;
         }
 
-        // Move box
-        const newBoxes = [...boxes];
-        newBoxes[boxIndex] = newBoxPos;
-        
-        if (boxMovedIndex === -1) {
+        // Check box collision
+        const boxIndex = getBoxIndex(newPlayerPos, boxes);
+        if (boxIndex !== -1) {
+          // Trying to push a box
+          const newBoxPos = { x: newPlayerPos.x + dx, y: newPlayerPos.y + dy };
+
+          // Check if box can move (not into wall or another box)
+          if (isWall(newBoxPos) || getBoxIndex(newBoxPos, boxes) !== -1) {
+            break;
+          }
+
+          // Move box
+          const newBoxes = [...boxes];
+          newBoxes[boxIndex] = newBoxPos;
+
+          if (boxMovedIndex === -1) {
             boxMovedIndex = boxIndex;
             boxPath.push(boxes[boxIndex]); // Add start pos
-        }
-        boxPath.push(newBoxPos);
+          }
+          boxPath.push(newBoxPos);
 
-        currentState = {
-          player: newPlayerPos,
-          boxes: newBoxes,
-        };
-      } else {
-        // Just moving player
-        currentState = {
-          ...currentState,
-          player: newPlayerPos,
-        };
+          currentState = {
+            player: newPlayerPos,
+            boxes: newBoxes,
+          };
+        } else {
+          // Just moving player
+          currentState = {
+            ...currentState,
+            player: newPlayerPos,
+          };
+        }
+
+        playerPath.push(currentState.player);
+        moved = true;
       }
 
-      playerPath.push(currentState.player);
-      moved = true;
-    }
+      if (moved) {
+        // Start timer on first move
+        if (!hasMovedRef.current) {
+          hasMovedRef.current = true;
+          setTimerState({
+            startTime: Date.now(),
+            elapsedTime: 0,
+            isRunning: true,
+          });
+        }
 
-    if (moved) {
-      historyRef.current.push(startState);
-      setGameState(currentState);
-      setLastMove({
-        direction,
-        playerPath,
-        boxMoved: boxMovedIndex !== -1 ? { index: boxMovedIndex, path: boxPath } : undefined
-      });
-      
-      setIsMoving(true);
-      // Calculate duration based on steps
-      // 50ms per step
-      const duration = (playerPath.length - 1) * 25;
-      setTimeout(() => setIsMoving(false), duration);
-    }
-  }, [gameState, isMoving, isWall, getBoxIndex]);
+        historyRef.current.push(startState);
+        setGameState(currentState);
+        setLastMove({
+          direction,
+          playerPath,
+          boxMoved:
+            boxMovedIndex !== -1
+              ? { index: boxMovedIndex, path: boxPath }
+              : undefined,
+        });
+
+        setIsMoving(true);
+        // Calculate duration based on steps
+        // 12ms per step for fast arcade-style movement
+        const duration = (playerPath.length - 1) * 12;
+        setTimeout(() => {
+          setIsMoving(false);
+
+          // Check if player reached the finish tile
+          if (
+            level.finishPosition &&
+            currentState.player.x === level.finishPosition.x &&
+            currentState.player.y === level.finishPosition.y
+          ) {
+            console.log(
+              "Player reached finish tile! Setting isChapterComplete to true",
+            );
+            console.log("Finish position:", level.finishPosition);
+            console.log("Player position:", currentState.player);
+            console.log("Chapter number:", level.chapterNumber);
+            setIsChapterComplete(true);
+          }
+        }, duration);
+      }
+    },
+    [gameState, isMoving, isWall, getBoxIndex],
+  );
 
   const reset = useCallback(() => {
     if (isMoving) return;
@@ -124,7 +303,20 @@ export const useSokoban = (level: LevelConfig) => {
       boxes: level.boxes,
     });
     setLastMove(null);
+    setDoorOpen(false);
+    setOpenDoors(new Set());
+    setCompletedSubLevels([]);
+    setIsChapterComplete(false);
+    setTimerState({
+      startTime: null,
+      elapsedTime: 0,
+      isRunning: false,
+    });
     historyRef.current = [];
+    hasMovedRef.current = false;
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
   }, [level, isMoving]);
 
   const undo = useCallback(() => {
@@ -136,13 +328,66 @@ export const useSokoban = (level: LevelConfig) => {
     }
   }, [isMoving]);
 
+  // Timer animation loop - update every 10ms for smooth 100fps display
+  useEffect(() => {
+    if (!timerState.isRunning || !timerState.startTime) {
+      return;
+    }
+
+    let lastUpdateTime = 0;
+    const updateInterval = 10; // Update every 10ms for smooth animation
+
+    const updateTimer = () => {
+      const now = Date.now();
+
+      // Throttle updates to avoid excessive re-renders
+      if (now - lastUpdateTime >= updateInterval) {
+        const elapsed = now - timerState.startTime!;
+        setTimerState((prev) => ({
+          ...prev,
+          elapsedTime: elapsed,
+        }));
+        lastUpdateTime = now;
+      }
+
+      animationFrameRef.current = requestAnimationFrame(updateTimer);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(updateTimer);
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [timerState.isRunning, timerState.startTime]);
+
+  // Stop timer when chapter completes
+  useEffect(() => {
+    if (isChapterComplete && timerState.isRunning) {
+      setTimerState((prev) => ({
+        ...prev,
+        isRunning: false,
+      }));
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    }
+  }, [isChapterComplete, timerState.isRunning]);
+
   return {
     gameState,
     move,
     reset,
     undo,
-    isWon,
+    isWon: actualIsWon,
     isMoving,
     lastMove,
+    doorOpen,
+    openDoors,
+    completedSubLevels,
+    isChapterComplete,
+    timerState,
+    moveCount: historyRef.current.length,
   };
 };

@@ -79,3 +79,17 @@ export type MoveSequence = {
     path: Position[];
   };
 };
+
+export type TimerState = {
+  startTime: number | null;
+  elapsedTime: number;
+  isRunning: boolean;
+};
+
+export type SpeedRunRecord = {
+  time: number;              // milliseconds
+  timestamp: number;         // Firebase server timestamp
+  moves: number;             // total moves in run
+  username: string;          // user.displayName or "Anonymous"
+  chapterNumber?: number;    // optional chapter identifier
+};

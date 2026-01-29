@@ -5,6 +5,7 @@ import {
     LevelConfig,
     MoveSequence,
     Position,
+    TimerState,
 } from "./types";
 
 export const useSokoban = (level: LevelConfig) => {
@@ -18,8 +19,15 @@ export const useSokoban = (level: LevelConfig) => {
   const [openDoors, setOpenDoors] = useState<Set<number>>(new Set());
   const [completedSubLevels, setCompletedSubLevels] = useState<number[]>([]);
   const [isChapterComplete, setIsChapterComplete] = useState(false);
+  const [timerState, setTimerState] = useState<TimerState>({
+    startTime: null,
+    elapsedTime: 0,
+    isRunning: false,
+  });
 
   const historyRef = useRef<GameState[]>([]);
+  const animationFrameRef = useRef<number>();
+  const hasMovedRef = useRef(false);
 
   // Reset game state when level changes
   useEffect(() => {
@@ -33,7 +41,16 @@ export const useSokoban = (level: LevelConfig) => {
     setOpenDoors(new Set());
     setCompletedSubLevels([]);
     setIsChapterComplete(false);
+    setTimerState({
+      startTime: null,
+      elapsedTime: 0,
+      isRunning: false,
+    });
     historyRef.current = [];
+    hasMovedRef.current = false;
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
   }, [level]);
 
   // Pre-compute wall positions as a Set for O(1) lookups
@@ -231,6 +248,16 @@ export const useSokoban = (level: LevelConfig) => {
       }
 
       if (moved) {
+        // Start timer on first move
+        if (!hasMovedRef.current) {
+          hasMovedRef.current = true;
+          setTimerState({
+            startTime: Date.now(),
+            elapsedTime: 0,
+            isRunning: true,
+          });
+        }
+
         historyRef.current.push(startState);
         setGameState(currentState);
         setLastMove({
@@ -280,7 +307,16 @@ export const useSokoban = (level: LevelConfig) => {
     setOpenDoors(new Set());
     setCompletedSubLevels([]);
     setIsChapterComplete(false);
+    setTimerState({
+      startTime: null,
+      elapsedTime: 0,
+      isRunning: false,
+    });
     historyRef.current = [];
+    hasMovedRef.current = false;
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
   }, [level, isMoving]);
 
   const undo = useCallback(() => {
@@ -291,6 +327,53 @@ export const useSokoban = (level: LevelConfig) => {
       setLastMove(null); // Clear animation on undo
     }
   }, [isMoving]);
+
+  // Timer animation loop - update every 10ms for smooth 100fps display
+  useEffect(() => {
+    if (!timerState.isRunning || !timerState.startTime) {
+      return;
+    }
+
+    let lastUpdateTime = 0;
+    const updateInterval = 10; // Update every 10ms for smooth animation
+
+    const updateTimer = () => {
+      const now = Date.now();
+
+      // Throttle updates to avoid excessive re-renders
+      if (now - lastUpdateTime >= updateInterval) {
+        const elapsed = now - timerState.startTime!;
+        setTimerState((prev) => ({
+          ...prev,
+          elapsedTime: elapsed,
+        }));
+        lastUpdateTime = now;
+      }
+
+      animationFrameRef.current = requestAnimationFrame(updateTimer);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(updateTimer);
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [timerState.isRunning, timerState.startTime]);
+
+  // Stop timer when chapter completes
+  useEffect(() => {
+    if (isChapterComplete && timerState.isRunning) {
+      setTimerState((prev) => ({
+        ...prev,
+        isRunning: false,
+      }));
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    }
+  }, [isChapterComplete, timerState.isRunning]);
 
   return {
     gameState,
@@ -304,5 +387,7 @@ export const useSokoban = (level: LevelConfig) => {
     openDoors,
     completedSubLevels,
     isChapterComplete,
+    timerState,
+    moveCount: historyRef.current.length,
   };
 };

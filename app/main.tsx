@@ -1,11 +1,14 @@
 import { LEVELS } from "@/assets/levels";
 import { GameGestureWrapper } from "@/components/game/GameGestureWrapper";
 import { SokobanBoard } from "@/components/game/SokobanBoard";
+import { TimerDisplay } from "@/components/game/TimerDisplay";
 import { LevelConfig } from "@/components/game/types";
 import { useSokoban } from "@/components/game/useSokoban";
+import { useAuth } from "@/contexts/AuthContext";
 import { useUserProgress } from "@/contexts/UserProgressContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,6 +28,8 @@ export default function HomeScreen() {
   const { levelData } = useLocalSearchParams();
   const [level, setLevel] = useState<LevelConfig | null>(null);
   const [loading, setLoading] = useState(false);
+  const [bestTime, setBestTime] = useState<number | null>(null);
+  const { user } = useAuth();
   const { markLevelComplete } = useUserProgress();
 
   useEffect(() => {
@@ -84,6 +89,8 @@ export default function HomeScreen() {
     openDoors,
     completedSubLevels,
     isChapterComplete,
+    timerState,
+    moveCount,
   } = useSokoban(safeLevel);
 
   const safeMove = useCallback(
@@ -121,15 +128,96 @@ export default function HomeScreen() {
     }
   }, [completedSubLevels, prevCompletedSubLevels]);
 
-  // Handle chapter complete - show message for 3 seconds then navigate home
+  const uploadSpeedRun = async (
+    levelNumber: number,
+    time: number,
+    moves: number
+  ) => {
+    // Only upload if user is authenticated
+    if (!user) {
+      console.log("User not authenticated, skipping Firebase upload");
+      return;
+    }
+
+    try {
+      const levelId = `level_${levelNumber}`;
+      const speedRunRef = doc(db, "speedRuns", levelId, "users", user.uid);
+
+      await setDoc(speedRunRef, {
+        time,
+        timestamp: serverTimestamp(),
+        moves,
+        username: user.displayName || "Anonymous",
+        chapterNumber: safeLevel.chapterNumber,
+      });
+
+      console.log(`Speed run uploaded for level ${levelNumber}: ${time}ms`);
+    } catch (error) {
+      console.error("Error uploading speed run:", error);
+      Alert.alert(
+        "Upload Failed",
+        "Your time was saved locally, but couldn't be uploaded to the leaderboard. Please check your internet connection."
+      );
+    }
+  };
+
+  // Load best time when level changes
+  useEffect(() => {
+    const loadBestTime = async () => {
+      if (safeLevel.levelNumber) {
+        try {
+          const key = `bestTime_level_${safeLevel.levelNumber}`;
+          const storedTime = await AsyncStorage.getItem(key);
+          if (storedTime) {
+            setBestTime(parseInt(storedTime, 10));
+          } else {
+            setBestTime(null);
+          }
+        } catch (e) {
+          console.error("Error loading best time:", e);
+        }
+      }
+    };
+    loadBestTime();
+  }, [safeLevel.levelNumber]);
+
+  // Handle chapter complete - save best time, show message for 3 seconds, then navigate home
   useEffect(() => {
     if (isChapterComplete) {
+      const saveBestTime = async () => {
+        if (safeLevel.levelNumber && timerState.elapsedTime > 0) {
+          try {
+            const key = `bestTime_level_${safeLevel.levelNumber}`;
+
+            // Check if this is a new best time
+            if (!bestTime || timerState.elapsedTime < bestTime) {
+              await AsyncStorage.setItem(key, timerState.elapsedTime.toString());
+              setBestTime(timerState.elapsedTime);
+              console.log(
+                `New best time for level ${safeLevel.levelNumber}: ${timerState.elapsedTime}ms`,
+              );
+
+              // Upload to Firebase if user is authenticated
+              await uploadSpeedRun(
+                safeLevel.levelNumber,
+                timerState.elapsedTime,
+                moveCount
+              );
+            }
+          } catch (e) {
+            console.error("Error saving best time:", e);
+          }
+        }
+      };
+
+      saveBestTime();
+
       const timer = setTimeout(() => {
         router.push("/home");
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [isChapterComplete, router]);
+  }, [isChapterComplete, router, safeLevel.levelNumber, timerState.elapsedTime, bestTime]);
 
   // Advance level when player enters open door
   useEffect(() => {
@@ -237,6 +325,8 @@ export default function HomeScreen() {
           />
         </TouchableOpacity>
       </View>
+
+      <TimerDisplay timerState={timerState} />
 
       <GameGestureWrapper onMove={safeMove}>
         <View style={styles.gameContainer}>

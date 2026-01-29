@@ -302,6 +302,51 @@ export const SokobanBoard: React.FC<Props> = ({
 }) => {
   const { width, height } = level;
 
+  // Track which completion message to display (only one at a time)
+  const [activeOverlay, setActiveOverlay] = React.useState<{
+    type: "level" | "chapter" | null;
+    levelId?: number;
+  }>({ type: null });
+
+  // Use a ref to track the current timeout so we can clear it when a new overlay appears
+  const overlayTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Handle level completion overlay
+  useEffect(() => {
+    if (justCompletedSubLevel !== null && justCompletedSubLevel !== undefined) {
+      // Clear any existing timer
+      if (overlayTimerRef.current) {
+        clearTimeout(overlayTimerRef.current);
+      }
+
+      setActiveOverlay({ type: "level", levelId: justCompletedSubLevel });
+
+      // Clear after 1 second
+      overlayTimerRef.current = setTimeout(() => {
+        setActiveOverlay({ type: null });
+        overlayTimerRef.current = null;
+      }, 1000);
+    }
+  }, [justCompletedSubLevel]);
+
+  // Handle chapter completion overlay (takes priority as most recent)
+  useEffect(() => {
+    if (isChapterComplete) {
+      // Clear any existing timer (e.g., from level completion)
+      if (overlayTimerRef.current) {
+        clearTimeout(overlayTimerRef.current);
+      }
+
+      setActiveOverlay({ type: "chapter" });
+
+      // Clear after 3 seconds
+      overlayTimerRef.current = setTimeout(() => {
+        setActiveOverlay({ type: null });
+        overlayTimerRef.current = null;
+      }, 3000);
+    }
+  }, [isChapterComplete]);
+
   // Debug logging
   useEffect(() => {
     console.log("Level finishPosition:", level.finishPosition);
@@ -446,20 +491,20 @@ export const SokobanBoard: React.FC<Props> = ({
 
   return (
     <View style={styles.container}>
-      {/* Completion message overlay */}
-      {justCompletedSubLevel !== null &&
-        justCompletedSubLevel !== undefined && (
+      {/* Single completion message overlay - shows most recent */}
+      {activeOverlay.type === "level" &&
+        activeOverlay.levelId !== undefined &&
+        LEVEL_COMPLETE_IMAGES[activeOverlay.levelId] && (
           <View style={styles.completionOverlay}>
             <Image
-              source={LEVEL_COMPLETE_IMAGES[justCompletedSubLevel]}
+              source={LEVEL_COMPLETE_IMAGES[activeOverlay.levelId]}
               style={styles.completionImage}
               resizeMode="contain"
             />
           </View>
         )}
 
-      {/* Chapter complete message overlay */}
-      {isChapterComplete &&
+      {activeOverlay.type === "chapter" &&
         level.chapterNumber &&
         CHAPTER_COMPLETE_IMAGES[level.chapterNumber] && (
           <View style={styles.completionOverlay}>

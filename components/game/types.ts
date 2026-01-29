@@ -64,6 +64,11 @@ export type LevelConfig = {
   followZoom?: number; // Default zoom level (default: 2.0)
   finishPosition?: Position; // Chapter finish tile
   chapterNumber?: number; // For showing chapter_x_complete.png
+  starThresholds?: {
+    1: number;
+    2: number;
+    3: number;
+  };
 };
 
 export type GameState = {
@@ -87,9 +92,9 @@ export type TimerState = {
 };
 
 export type SpeedRunRecord = {
-  time: number;              // milliseconds
-  timestamp: number;         // Firebase server timestamp
-  moves: number;             // total moves in run
-  username: string;          // user.displayName or "Anonymous"
-  chapterNumber?: number;    // optional chapter identifier
+  time: number; // milliseconds
+  timestamp: number; // Firebase server timestamp
+  moves: number; // total moves in run
+  username: string; // user.displayName or "Anonymous"
+  chapterNumber?: number; // optional chapter identifier
 };

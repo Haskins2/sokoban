@@ -136,6 +136,9 @@ export default function LevelEditor() {
   const [door, setDoor] = useState<Door | null>(null);
   const [finish, setFinish] = useState<Position | null>(null);
   const [chapterNumber, setChapterNumber] = useState("1");
+  const [star1Time, setStar1Time] = useState("");
+  const [star2Time, setStar2Time] = useState("");
+  const [star3Time, setStar3Time] = useState("");
 
   // Sub-level area state
   const [subLevelAreas, setSubLevelAreas] = useState<SubLevelArea[]>([]);
@@ -733,6 +736,11 @@ export default function LevelEditor() {
           : undefined,
       finishPosition: finish ? normalizePos(finish) : undefined,
       chapterNumber: finish ? parseInt(chapterNumber) || 1 : undefined,
+      starThresholds: {
+        1: parseFloat(star1Time) * 1000 || 0,
+        2: parseFloat(star2Time) * 1000 || 0,
+        3: parseFloat(star3Time) * 1000 || 0,
+      },
     };
 
     const docId = `level_${levelNumber}`;
@@ -833,6 +841,28 @@ export default function LevelEditor() {
       setDoor(levelData.door || null);
       setFinish(levelData.finishPosition || null);
       setChapterNumber(levelData.chapterNumber?.toString() || "1");
+
+      if (levelData.starThresholds) {
+        setStar1Time(
+          levelData.starThresholds[1]
+            ? (levelData.starThresholds[1] / 1000).toString()
+            : "",
+        );
+        setStar2Time(
+          levelData.starThresholds[2]
+            ? (levelData.starThresholds[2] / 1000).toString()
+            : "",
+        );
+        setStar3Time(
+          levelData.starThresholds[3]
+            ? (levelData.starThresholds[3] / 1000).toString()
+            : "",
+        );
+      } else {
+        setStar1Time("");
+        setStar2Time("");
+        setStar3Time("");
+      }
 
       // Load sub-level areas if they exist
       if (levelData.subLevels) {
@@ -1250,6 +1280,41 @@ export default function LevelEditor() {
           placeholderTextColor="#666"
         />
 
+        <Text style={styles.sectionHeader}>Star Times (s)</Text>
+        <View style={styles.rowInput}>
+          <Text style={styles.smallLabel}>★1</Text>
+          <TextInput
+            style={[styles.input, styles.flexInput]}
+            value={star1Time}
+            onChangeText={setStar1Time}
+            keyboardType="numeric"
+            placeholder="30"
+            placeholderTextColor="#666"
+          />
+        </View>
+        <View style={styles.rowInput}>
+          <Text style={styles.smallLabel}>★2</Text>
+          <TextInput
+            style={[styles.input, styles.flexInput]}
+            value={star2Time}
+            onChangeText={setStar2Time}
+            keyboardType="numeric"
+            placeholder="20"
+            placeholderTextColor="#666"
+          />
+        </View>
+        <View style={styles.rowInput}>
+          <Text style={styles.smallLabel}>★3</Text>
+          <TextInput
+            style={[styles.input, styles.flexInput]}
+            value={star3Time}
+            onChangeText={setStar3Time}
+            keyboardType="numeric"
+            placeholder="10"
+            placeholderTextColor="#666"
+          />
+        </View>
+
         <TouchableOpacity
           style={[styles.saveButton, { backgroundColor: "#FF9800" }]}
           onPress={() => loadLevel()}
@@ -1655,5 +1720,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textAlign: "center",
     marginTop: 10,
+  },
+  rowInput: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+    gap: 4,
+  },
+  smallLabel: {
+    color: "#aaa",
+    fontSize: 10,
+    width: 20,
+  },
+  flexInput: {
+    flex: 1,
+    marginBottom: 0,
   },
 });

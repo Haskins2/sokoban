@@ -1,6 +1,7 @@
 import { LEVELS } from "@/assets/levels";
 import { GameGestureWrapper } from "@/components/game/GameGestureWrapper";
 import { SokobanBoard } from "@/components/game/SokobanBoard";
+import { StarThresholdsDisplay } from "@/components/game/StarThresholdsDisplay";
 import { TimerDisplay } from "@/components/game/TimerDisplay";
 import { LevelConfig } from "@/components/game/types";
 import { useSokoban } from "@/components/game/useSokoban";
@@ -362,6 +363,10 @@ export default function HomeScreen() {
       </View>
 
       <TimerDisplay timerState={timerState} isComplete={isChapterComplete} />
+      <StarThresholdsDisplay
+        thresholds={safeLevel.starThresholds}
+        isVisible={!timerState.startTime}
+      />
 
       <GameGestureWrapper onMove={safeMove}>
         <View style={styles.gameContainer}>

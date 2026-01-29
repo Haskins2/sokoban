@@ -21,5 +21,10 @@
   ],
   "boxes": [{ "x": 2, "y": 2 }],
   "goals": [{ "x": 2, "y": 3 }],
-  "initialPlayer": { "x": 2, "y": 1 }
+  "initialPlayer": { "x": 2, "y": 1 },
+  "starThresholds": {
+    "1": 30000,
+    "2": 20000,
+    "3": 10000
+  }
 }

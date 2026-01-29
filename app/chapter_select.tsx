@@ -38,11 +38,60 @@ export default function LevelSelect() {
     }
   };
 
+  const getChapterImage = (chapterNum: number, completed: boolean) => {
+    const chapterMap: { [key: number]: { complete: any; notComplete: any } } = {
+      1: {
+        complete: require("../assets/images/chapter_complete_text/chapter_1_complete.png"),
+        notComplete: require("../assets/images/chapter_complete_text/chapter_1_NOT_complete.png"),
+      },
+      2: {
+        complete: require("../assets/images/chapter_complete_text/chapter_2_complete.png"),
+        notComplete: require("../assets/images/chapter_complete_text/chapter_2_NOT_complete.png"),
+      },
+      3: {
+        complete: require("../assets/images/chapter_complete_text/chapter_3_complete.png"),
+        notComplete: require("../assets/images/chapter_complete_text/chapter_3_NOT_complete.png"),
+      },
+    };
+
+    const images = chapterMap[chapterNum];
+    return images ? (completed ? images.complete : images.notComplete) : null;
+  };
+
   const handleChapterSelect = (level: any) => {
     router.push({
       pathname: "/main",
       params: { levelData: JSON.stringify(level) },
     });
+  };
+
+  const renderChapterItem = ({ item }: { item: any }) => {
+    const chapterNum = item.levelNumber;
+
+    // Only render for chapters 1-3
+    if (chapterNum > 3) {
+      return null;
+    }
+
+    const completed = isLevelComplete(chapterNum);
+    const imageSource = getChapterImage(chapterNum, completed);
+
+    if (!imageSource) {
+      return null;
+    }
+
+    return (
+      <TouchableOpacity
+        style={styles.chapterItem}
+        onPress={() => handleChapterSelect(item)}
+      >
+        <Image
+          source={imageSource}
+          style={styles.chapterImage}
+          resizeMode="contain"
+        />
+      </TouchableOpacity>
+    );
   };
 
   if (loading) {
@@ -81,44 +130,7 @@ export default function LevelSelect() {
       <FlatList
         data={chapters}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => {
-          const completed = isLevelComplete(item.levelNumber);
-          const chapterNum = item.levelNumber;
-
-          // Only show image for chapters 1-3
-          if (chapterNum <= 3) {
-            let imageSource;
-
-            if (chapterNum === 1) {
-              imageSource = completed
-                ? require("../assets/images/chapter_complete_text/chapter_1_complete.png")
-                : require("../assets/images/chapter_complete_text/chapter_1_NOT_complete.png");
-            } else if (chapterNum === 2) {
-              imageSource = completed
-                ? require("../assets/images/chapter_complete_text/chapter_2_complete.png")
-                : require("../assets/images/chapter_complete_text/chapter_2_NOT_complete.png");
-            } else if (chapterNum === 3) {
-              imageSource = completed
-                ? require("../assets/images/chapter_complete_text/chapter_3_complete.png")
-                : require("../assets/images/chapter_complete_text/chapter_3_NOT_complete.png");
-            }
-
-            return (
-              <TouchableOpacity
-                style={styles.chapterItem}
-                onPress={() => handleChapterSelect(item)}
-              >
-                <Image
-                  source={imageSource}
-                  style={styles.chapterImage}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            );
-          }
-
-          return null;
-        }}
+        renderItem={renderChapterItem}
         contentContainerStyle={styles.listContent}
       />
     </View>

@@ -38,24 +38,13 @@ export default function LevelSelect() {
     }
   };
 
-  const getChapterImage = (chapterNum: number, completed: boolean) => {
-    const chapterMap: { [key: number]: { complete: any; notComplete: any } } = {
-      1: {
-        complete: require("../assets/images/chapter_complete_text/chapter_1_complete.png"),
-        notComplete: require("../assets/images/chapter_complete_text/chapter_1_NOT_complete.png"),
-      },
-      2: {
-        complete: require("../assets/images/chapter_complete_text/chapter_2_complete.png"),
-        notComplete: require("../assets/images/chapter_complete_text/chapter_2_NOT_complete.png"),
-      },
-      3: {
-        complete: require("../assets/images/chapter_complete_text/chapter_3_complete.png"),
-        notComplete: require("../assets/images/chapter_complete_text/chapter_3_NOT_complete.png"),
-      },
+  const getChapterImage = (chapterNum: number) => {
+    const chapterImages: { [key: number]: any } = {
+      1: require("../assets/images/chapter_text/chapter_1.png"),
+      2: require("../assets/images/chapter_text/chapter_2.png"),
+      3: require("../assets/images/chapter_text/chapter_3.png"),
     };
-
-    const images = chapterMap[chapterNum];
-    return images ? (completed ? images.complete : images.notComplete) : null;
+    return chapterImages[chapterNum];
   };
 
   const handleChapterSelect = (level: any) => {
@@ -73,23 +62,32 @@ export default function LevelSelect() {
       return null;
     }
 
-    const completed = isLevelComplete(chapterNum);
-    const imageSource = getChapterImage(chapterNum, completed);
+    const chapterImage = getChapterImage(chapterNum);
 
-    if (!imageSource) {
+    if (!chapterImage) {
       return null;
     }
 
     return (
       <TouchableOpacity
-        style={styles.chapterItem}
+        style={styles.chapterItemContainer}
         onPress={() => handleChapterSelect(item)}
       >
         <Image
-          source={imageSource}
-          style={styles.chapterImage}
+          source={chapterImage}
+          style={styles.chapterTextImage}
           resizeMode="contain"
         />
+        <View style={styles.starsContainer}>
+          {[1, 2, 3].map((star, index) => (
+            <Image
+              key={index}
+              source={require("../assets/images/stars/star_full.png")}
+              style={styles.starIcon}
+              resizeMode="contain"
+            />
+          ))}
+        </View>
       </TouchableOpacity>
     );
   };
@@ -162,10 +160,29 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 20,
-    alignItems: "flex-start",
+    alignItems: "center",
+    width: "100%",
   },
-  chapterImage: {
-    width: 300,
-    height: 60,
+  chapterItemContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "85%",
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  chapterTextImage: {
+    width: 180,
+    height: 50,
+    marginRight: 20,
+  },
+  starsContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  starIcon: {
+    width: 35,
+    height: 35,
+    margin: 5,
   },
 });

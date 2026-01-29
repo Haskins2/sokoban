@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserProgress } from "@/contexts/UserProgressContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -32,18 +32,25 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { markLevelComplete } = useUserProgress();
 
-  useEffect(() => {
-    if (levelData) {
-      try {
-        const parsed = JSON.parse(levelData as string);
-        setLevel(parsed);
-      } catch (e) {
-        console.error(e);
-      }
-    } else {
-      // Fallback to level 1 from Firestore if no param
-      fetchLevel(1);
+  const loadLevel = async () => {
+    if (!levelData) {
+      // Fallback to level 1 from Firestore if no param provided
+      await fetchLevel(1);
+      return;
     }
+
+    try {
+      const parsed = JSON.parse(levelData as string);
+      setLevel(parsed);
+    } catch (error) {
+      console.error("Failed to parse level data:", error);
+      // Fallback to level 1 on parse error
+      await fetchLevel(1);
+    }
+  };
+
+  useEffect(() => {
+    loadLevel();
   }, [levelData]);
 
   const fetchLevel = async (num: number) => {
@@ -56,8 +63,6 @@ export default function HomeScreen() {
         setLevel(levelData);
       } else {
         Alert.alert("Finished", "No more levels!");
-        // If we were trying to go next, maybe stay on current?
-        // If initial load failed, maybe go to editor?
       }
     } catch (e) {
       console.error(e);
@@ -74,6 +79,7 @@ export default function HomeScreen() {
 
   // Safe fallback for hook
   const safeLevel = level || INITIAL_LEVEL;
+
   const [justCompletedSubLevel, setJustCompletedSubLevel] = useState<
     number | null
   >(null);
@@ -101,37 +107,49 @@ export default function HomeScreen() {
   );
 
   // Mark level as complete when won
+  // run when level is won, safeLevel.levelNumber changes
   useEffect(() => {
     if (isWon && safeLevel.levelNumber) {
       markLevelComplete(safeLevel.levelNumber);
     }
   }, [isWon, safeLevel.levelNumber, markLevelComplete]);
 
-  // Track completed sub-levels and show notification
+  // Track completed sub-levels to detect new ones
   const [prevCompletedSubLevels, setPrevCompletedSubLevels] = useState<
     number[]
   >([]);
+
   useEffect(() => {
+    // Check if there are new completions
     if (
-      completedSubLevels &&
-      completedSubLevels.length > prevCompletedSubLevels.length
+      !completedSubLevels ||
+      completedSubLevels.length <= prevCompletedSubLevels.length
     ) {
-      // Find newly completed sub-levels
-      const newlyCompleted = completedSubLevels.filter(
-        (id) => !prevCompletedSubLevels.includes(id),
-      );
-      if (newlyCompleted.length > 0) {
-        setJustCompletedSubLevel(newlyCompleted[0]);
-        setTimeout(() => setJustCompletedSubLevel(null), 2000);
-      }
-      setPrevCompletedSubLevels(completedSubLevels);
+      return;
     }
+
+    // Find newly completed sub-levels
+    const newlyCompleted = completedSubLevels.filter(
+      (id) => !prevCompletedSubLevels.includes(id),
+    );
+
+    // Show notification for the first newly completed sub-level
+    if (newlyCompleted.length > 0) {
+      setJustCompletedSubLevel(newlyCompleted[0]);
+
+      // Clear notification after 2 seconds
+      const timer = setTimeout(() => setJustCompletedSubLevel(null), 2000);
+      return () => clearTimeout(timer);
+    }
+
+    // Update tracked list
+    setPrevCompletedSubLevels(completedSubLevels);
   }, [completedSubLevels, prevCompletedSubLevels]);
 
   const uploadSpeedRun = async (
     levelNumber: number,
     time: number,
-    moves: number
+    moves: number,
   ) => {
     // Only upload if user is authenticated
     if (!user) {
@@ -156,7 +174,7 @@ export default function HomeScreen() {
       console.error("Error uploading speed run:", error);
       Alert.alert(
         "Upload Failed",
-        "Your time was saved locally, but couldn't be uploaded to the leaderboard. Please check your internet connection."
+        "Your time was saved locally, but couldn't be uploaded to the leaderboard. Please check your internet connection.",
       );
     }
   };
@@ -181,43 +199,60 @@ export default function HomeScreen() {
     loadBestTime();
   }, [safeLevel.levelNumber]);
 
-  // Handle chapter complete - save best time, show message for 3 seconds, then navigate home
-  useEffect(() => {
-    if (isChapterComplete) {
-      const saveBestTime = async () => {
-        if (safeLevel.levelNumber && timerState.elapsedTime > 0) {
-          try {
-            const key = `bestTime_level_${safeLevel.levelNumber}`;
-
-            // Check if this is a new best time
-            if (!bestTime || timerState.elapsedTime < bestTime) {
-              await AsyncStorage.setItem(key, timerState.elapsedTime.toString());
-              setBestTime(timerState.elapsedTime);
-              console.log(
-                `New best time for level ${safeLevel.levelNumber}: ${timerState.elapsedTime}ms`,
-              );
-
-              // Upload to Firebase if user is authenticated
-              await uploadSpeedRun(
-                safeLevel.levelNumber,
-                timerState.elapsedTime,
-                moveCount
-              );
-            }
-          } catch (e) {
-            console.error("Error saving best time:", e);
-          }
-        }
-      };
-
-      saveBestTime();
-
-      const timer = setTimeout(() => {
-        router.push("/home");
-      }, 3000);
-      return () => clearTimeout(timer);
+  // Save best time when chapter is complete
+  const handleChapterComplete = async () => {
+    if (!safeLevel.levelNumber || timerState.elapsedTime <= 0) {
+      return;
     }
-  }, [isChapterComplete, router, safeLevel.levelNumber, timerState.elapsedTime, bestTime]);
+
+    const key = `bestTime_level_${safeLevel.levelNumber}`;
+    const isNewBestTime = !bestTime || timerState.elapsedTime < bestTime;
+
+    if (!isNewBestTime) {
+      return;
+    }
+
+    try {
+      // Save to local storage
+      await AsyncStorage.setItem(key, timerState.elapsedTime.toString());
+      setBestTime(timerState.elapsedTime);
+      console.log(
+        `New best time for level ${safeLevel.levelNumber}: ${timerState.elapsedTime}ms`,
+      );
+
+      // Upload to Firebase
+      await uploadSpeedRun(
+        safeLevel.levelNumber,
+        timerState.elapsedTime,
+        moveCount,
+      );
+    } catch (error) {
+      console.error("Error saving best time:", error);
+    }
+  };
+
+  // Navigate home after chapter completion
+  useEffect(() => {
+    if (!isChapterComplete) {
+      return;
+    }
+
+    // Save best time if it's a new record
+    handleChapterComplete();
+
+    // Navigate home after 3 seconds
+    const timer = setTimeout(() => {
+      router.push("/home");
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [
+    isChapterComplete,
+    router,
+    safeLevel.levelNumber,
+    timerState.elapsedTime,
+    bestTime,
+  ]);
 
   // Advance level when player enters open door
   useEffect(() => {

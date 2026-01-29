@@ -21,6 +21,7 @@ import {
   View,
 } from "react-native";
 import { db } from "../firebaseConfig";
+import { scale, spacing } from "@/constants/responsive";
 
 const INITIAL_LEVEL = LEVELS[0];
 
@@ -413,31 +414,33 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.xl,
     zIndex: 1000,
   },
   headerIcon: {
-    width: 30,
-    height: 30,
+    width: scale(30),
+    height: scale(30),
   },
   gameContainer: {
-    marginTop: 100,
+    marginTop: scale(100),
   },
   buttonContainer: {
     flexDirection: "row",
-    marginBottom: 50,
-    gap: 20,
+    marginBottom: scale(50),
+    gap: spacing.xl,
     justifyContent: "center",
     alignItems: "center",
   },
+  resetButton: {},
+  undoButton: {},
   resetButtonImage: {
-    width: 200,
-    height: 80,
+    width: scale(200),
+    height: scale(80),
   },
   undoButtonImage: {
-    width: 150,
-    height: 30,
+    width: scale(150),
+    height: scale(30),
     paddingBottom: 1,
   },
 });

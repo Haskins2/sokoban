@@ -51,3 +51,37 @@ export const Fonts = Platform.select({
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
+
+// Responsive typography utilities
+import { fontSize } from './responsive';
+
+export const TypographyVariants = {
+  h1: {
+    fontSize: fontSize.xxxl,
+    fontWeight: '700' as const,
+  },
+  h2: {
+    fontSize: fontSize.xxl,
+    fontWeight: '700' as const,
+  },
+  h3: {
+    fontSize: fontSize.xl,
+    fontWeight: '600' as const,
+  },
+  body: {
+    fontSize: fontSize.base,
+    fontWeight: '400' as const,
+  },
+  bodySmall: {
+    fontSize: fontSize.md,
+    fontWeight: '400' as const,
+  },
+  label: {
+    fontSize: fontSize.sm,
+    fontWeight: '600' as const,
+  },
+  caption: {
+    fontSize: fontSize.xs,
+    fontWeight: '400' as const,
+  },
+} as const;

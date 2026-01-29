@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { doc, getDoc } from "firebase/firestore";
 import { Image, StyleSheet, TouchableOpacity, View } from "react-native";
 import { db } from "../firebaseConfig";
+import { scale, spacing } from "@/constants/responsive";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -89,29 +90,29 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.xl,
   },
   headerIcon: {
-    width: 30,
-    height: 40,
+    width: scale(30),
+    height: scale(40),
   },
   logo: {
-    width: 350,
-    height: 60,
-    marginTop: 10,
-    marginBottom: 200,
+    width: scale(350),
+    height: scale(60),
+    marginTop: spacing.sm,
+    marginBottom: scale(200),
   },
   buttonContainer: {
-    gap: 20,
+    gap: spacing.xl,
     alignItems: "center",
   },
   startButton: {
-    width: 350,
-    height: 60,
+    width: scale(350),
+    height: scale(60),
   },
   chapterSelectButton: {
-    width: 350,
-    height: 60,
+    width: scale(350),
+    height: scale(60),
   },
 });

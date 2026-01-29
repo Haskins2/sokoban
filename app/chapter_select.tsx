@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { db } from "../firebaseConfig";
+import { scale, spacing, moderateScale } from "@/constants/responsive";
 
 export default function LevelSelect() {
   const [chapters, setChapters] = useState<any[]>([]);
@@ -145,21 +146,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
-    paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingHorizontal: spacing.xl,
+    marginBottom: spacing.xl,
     zIndex: 1000,
   },
   headerIcon: {
-    width: 30,
-    height: 40,
+    width: scale(30),
+    height: scale(40),
   },
   titleImage: {
-    width: 350,
-    height: 60,
-    marginBottom: 30,
+    width: scale(350),
+    height: scale(60),
+    marginBottom: spacing.lg,
   },
   listContent: {
-    paddingBottom: 20,
+    paddingBottom: spacing.xl,
     alignItems: "center",
     width: "100%",
   },
@@ -168,21 +169,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     width: "85%",
-    marginBottom: 20,
-    paddingHorizontal: 10,
+    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.md,
   },
   chapterTextImage: {
-    width: 180,
-    height: 50,
-    marginRight: 20,
+    width: scale(180),
+    height: scale(50),
+    marginRight: spacing.xl,
   },
   starsContainer: {
     flexDirection: "row",
     alignItems: "center",
   },
   starIcon: {
-    width: 35,
-    height: 35,
-    margin: 5,
+    width: moderateScale(35, 0.3),
+    height: moderateScale(35, 0.3),
+    margin: spacing.sm,
   },
 });

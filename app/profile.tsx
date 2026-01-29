@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProgress } from "@/contexts/UserProgressContext";
+import { scale, spacing, fontSize as responsiveFontSize } from "@/constants/responsive";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -139,78 +140,78 @@ const styles = StyleSheet.create({
   },
   backButton: {
     position: "absolute",
-    top: 20,
-    left: 20,
-    padding: 10,
+    top: spacing.xl,
+    left: spacing.xl,
+    padding: spacing.md,
     zIndex: 10,
   },
   scrollContent: {
-    padding: 20,
-    paddingTop: 80,
+    padding: spacing.xl,
+    paddingTop: scale(80),
     alignItems: "center",
   },
   header: {
     alignItems: "center",
-    marginBottom: 40,
+    marginBottom: scale(40),
   },
   profileImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: scale(120),
+    height: scale(120),
+    borderRadius: scale(60),
   },
   username: {
-    fontSize: 32,
+    fontSize: responsiveFontSize.xxxl,
     fontWeight: "bold",
     color: "white",
-    marginTop: 15,
+    marginTop: spacing.lg,
   },
   email: {
-    fontSize: 16,
+    fontSize: responsiveFontSize.base,
     color: "#888",
-    marginTop: 5,
+    marginTop: spacing.sm,
   },
   section: {
     width: "100%",
-    maxWidth: 500,
+    maxWidth: scale(500),
     backgroundColor: "#2a2a2a",
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
+    borderRadius: scale(12),
+    padding: spacing.xl,
+    marginBottom: spacing.xl,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: responsiveFontSize.xl,
     fontWeight: "bold",
     color: "white",
-    marginBottom: 15,
+    marginBottom: spacing.lg,
   },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
-    gap: 10,
+    paddingVertical: spacing.md,
+    gap: spacing.md,
   },
   infoLabel: {
     color: "#ccc",
-    fontSize: 16,
+    fontSize: responsiveFontSize.base,
     flex: 1,
   },
   infoValue: {
     color: "white",
-    fontSize: 16,
+    fontSize: responsiveFontSize.base,
     fontWeight: "bold",
   },
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: spacing.md,
     backgroundColor: "#333",
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 10,
+    padding: spacing.lg,
+    borderRadius: scale(8),
+    marginBottom: spacing.sm,
   },
   actionButtonText: {
     color: "white",
-    fontSize: 16,
+    fontSize: responsiveFontSize.base,
     fontWeight: "bold",
   },
   logoutButtonStyle: {
@@ -223,19 +224,19 @@ const styles = StyleSheet.create({
   },
   notLoggedInText: {
     color: "#888",
-    fontSize: 18,
-    marginTop: 20,
-    marginBottom: 20,
+    fontSize: responsiveFontSize.lg,
+    marginTop: spacing.xl,
+    marginBottom: spacing.xl,
   },
   loginButton: {
     backgroundColor: "#4CAF50",
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 8,
+    paddingHorizontal: spacing.xxxl,
+    paddingVertical: spacing.lg,
+    borderRadius: scale(8),
   },
   loginButtonText: {
     color: "white",
-    fontSize: 18,
+    fontSize: responsiveFontSize.lg,
     fontWeight: "bold",
   },
 });

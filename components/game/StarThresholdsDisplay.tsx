@@ -1,6 +1,7 @@
 import React from "react";
 import { Image, StyleSheet, View } from "react-native";
 import { LevelConfig } from "./types";
+import { scale, moderateScale, spacing } from "@/constants/responsive";
 
 const DIGIT_IMAGES = {
   "0": require("@/assets/images/numbers/no_0.png"),
@@ -29,6 +30,8 @@ const PixelDigit = React.memo(({ char }: { char: DigitChar }) => {
     />
   );
 });
+
+PixelDigit.displayName = "PixelDigit";
 
 type Props = {
   thresholds?: LevelConfig["starThresholds"];
@@ -82,10 +85,10 @@ export const StarThresholdsDisplay = ({ thresholds, isVisible }: Props) => {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    top: 80,
-    left: 25,
+    top: scale(80),
+    left: spacing.lg,
     zIndex: 900,
-    gap: 8,
+    gap: spacing.sm,
   },
   row: {
     flexDirection: "row",
@@ -93,19 +96,19 @@ const styles = StyleSheet.create({
   },
   starsContainer: {
     flexDirection: "row",
-    width: 60, // Fixed width to align times. 3 stars * 20px = 60px
+    width: scale(60), // Fixed width to align times. 3 stars * 20px = 60px
     alignItems: "center",
   },
   starIcon: {
-    width: 20,
-    height: 20,
+    width: moderateScale(20, 0.3),
+    height: moderateScale(20, 0.3),
   },
   timeContainer: {
     flexDirection: "row",
-    marginLeft: 8,
+    marginLeft: spacing.sm,
   },
   digitImage: {
-    width: 16,
-    height: 24,
+    width: moderateScale(16, 0.3),
+    height: moderateScale(24, 0.3),
   },
 });

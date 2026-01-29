@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { Animated, Easing, Image, StyleSheet, View } from "react-native";
 import { TimerState } from "./types";
+import { moderateScale, spacing } from "@/constants/responsive";
 
 type TimerDisplayProps = {
   timerState: TimerState;
@@ -34,6 +35,8 @@ const PixelDigit = React.memo(({ char }: { char: DigitChar }) => {
     />
   );
 });
+
+PixelDigit.displayName = "PixelDigit";
 
 export const TimerDisplay = ({
   timerState,
@@ -98,7 +101,7 @@ export const TimerDisplay = ({
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    top: 20,
+    top: spacing.xl,
     left: 0,
     right: 0,
     alignItems: "center",
@@ -110,7 +113,7 @@ const styles = StyleSheet.create({
     gap: 0, // No gap between digits for tight pixel art look
   },
   digitImage: {
-    width: 20,
-    height: 30,
+    width: moderateScale(20, 0.3),
+    height: moderateScale(30, 0.3),
   },
 });

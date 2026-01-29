@@ -11,6 +11,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Door, GameState, LevelConfig, MoveSequence, TileType } from "./types";
 import { useCamera } from "./useCamera";
+import { scale, moderateScale, spacing } from "@/constants/responsive";
 
 // Tilesheet images
 const IMAGES = {
@@ -362,8 +363,8 @@ export const SokobanBoard: React.FC<Props> = ({
   }, [level.finishPosition, level.chapterNumber, isChapterComplete]);
 
   const screenWidth = Dimensions.get("window").width;
-  const maxTileWidth = (screenWidth - 40) / width;
-  const tileSize = Math.min(maxTileWidth, 50);
+  const maxTileWidth = (screenWidth - scale(40)) / width;
+  const tileSize = Math.min(maxTileWidth, moderateScale(50));
 
   // Camera system
   const { cameraX, cameraY, cameraScale } = useCamera(
@@ -598,10 +599,10 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 100,
     alignItems: "center",
-    paddingTop: 20,
+    paddingTop: spacing.xl,
   },
   completionImage: {
     width: "80%",
-    height: 80,
+    height: scale(80),
   },
 });

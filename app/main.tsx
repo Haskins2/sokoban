@@ -1,10 +1,12 @@
 import { LEVELS } from "@/assets/levels";
+import { ChapterCompleteMenu } from "@/components/game/ChapterCompleteMenu";
 import { GameGestureWrapper } from "@/components/game/GameGestureWrapper";
 import { SokobanBoard } from "@/components/game/SokobanBoard";
 import { StarThresholdsDisplay } from "@/components/game/StarThresholdsDisplay";
 import { TimerDisplay } from "@/components/game/TimerDisplay";
 import { LevelConfig } from "@/components/game/types";
 import { useSokoban } from "@/components/game/useSokoban";
+import { scale, spacing } from "@/constants/responsive";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProgress } from "@/contexts/UserProgressContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -21,7 +23,6 @@ import {
   View,
 } from "react-native";
 import { db } from "../firebaseConfig";
-import { scale, spacing } from "@/constants/responsive";
 
 const INITIAL_LEVEL = LEVELS[0];
 
@@ -31,6 +32,9 @@ export default function HomeScreen() {
   const [level, setLevel] = useState<LevelConfig | null>(null);
   const [loading, setLoading] = useState(false);
   const [bestTime, setBestTime] = useState<number | null>(null);
+  const [showCompletionMenu, setShowCompletionMenu] = useState(false);
+  const [completionTime, setCompletionTime] = useState<number>(0);
+  const [completionStars, setCompletionStars] = useState<number>(0);
   const { user } = useAuth();
   const { markLevelComplete } = useUserProgress();
 
@@ -77,6 +81,42 @@ export default function HomeScreen() {
     reset();
     setJustCompletedSubLevel(null);
     setPrevCompletedSubLevels([]);
+    setShowCompletionMenu(false);
+  };
+
+  const handlePlayAgain = () => {
+    setShowCompletionMenu(false);
+    handleReset();
+  };
+
+  const handleContinue = async () => {
+    setShowCompletionMenu(false);
+    if (safeLevel.levelNumber) {
+      const nextLevel = safeLevel.levelNumber + 1;
+      // Try to fetch the next level
+      setLoading(true);
+      try {
+        const docRef = doc(db, "levels", `level_${nextLevel}`);
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          const nextLevelData = snap.data() as LevelConfig;
+          setLevel(nextLevelData);
+          // Reset game state for new level
+          setJustCompletedSubLevel(null);
+          setPrevCompletedSubLevels([]);
+        } else {
+          // No more levels, go home
+          router.push("/home");
+        }
+      } catch (e) {
+        console.error(e);
+        router.push("/home");
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      router.push("/home");
+    }
   };
 
   // Safe fallback for hook
@@ -108,13 +148,57 @@ export default function HomeScreen() {
     [move],
   );
 
+  // Track if we've marked this level complete to avoid duplicate calls
+  const markedCompleteRef = useRef<number | null>(null);
+
   // Mark level as complete when won
-  // run when level is won, safeLevel.levelNumber changes
   useEffect(() => {
-    if (isWon && safeLevel.levelNumber) {
-      markLevelComplete(safeLevel.levelNumber);
+    if (!isWon || !safeLevel.levelNumber) {
+      markedCompleteRef.current = null;
+      return;
     }
-  }, [isWon, safeLevel.levelNumber, markLevelComplete]);
+
+    // Only mark once per level
+    if (markedCompleteRef.current === safeLevel.levelNumber) {
+      return;
+    }
+    markedCompleteRef.current = safeLevel.levelNumber;
+
+    // Calculate stars
+    let starsEarned = 0;
+    const time = timerState.elapsedTime;
+    const thresholds = safeLevel.starThresholds;
+
+    if (thresholds) {
+      // Robust calculation: sort thresholds to ensure [0] is hardest (smallest time)
+      // This handles cases where user input might be inverted (Star 1 < Star 3)
+      const sortedThresholds = Object.values(thresholds)
+        .map(Number)
+        .filter((val) => val > 0) // Filter out 0/invalid thresholds
+        .sort((a, b) => a - b);
+
+      // If we have valid thresholds, assign stars based on sorted values
+      // Smallest time = 3 stars, Largest time = 1 star
+      if (sortedThresholds.length >= 3) {
+        if (time <= sortedThresholds[0]) starsEarned = 3;
+        else if (time <= sortedThresholds[1]) starsEarned = 2;
+        else if (time <= sortedThresholds[2]) starsEarned = 1;
+      } else if (sortedThresholds.length === 2) {
+        // Fallback for partial data
+        if (time <= sortedThresholds[0]) starsEarned = 3;
+        else if (time <= sortedThresholds[1]) starsEarned = 2;
+      } else if (sortedThresholds.length === 1) {
+        if (time <= sortedThresholds[0]) starsEarned = 3;
+      } else {
+        // Fallback to strict key-based checking if filtering failed somehow
+        if (time <= thresholds[3]) starsEarned = 3;
+        else if (time <= thresholds[2]) starsEarned = 2;
+        else if (time <= thresholds[1]) starsEarned = 1;
+      }
+    }
+
+    markLevelComplete(safeLevel.levelNumber, starsEarned);
+  }, [isWon, safeLevel.levelNumber, timerState.elapsedTime, safeLevel.starThresholds]);
 
   // Track completed sub-levels to detect new ones
   const [prevCompletedSubLevels, setPrevCompletedSubLevels] = useState<
@@ -233,7 +317,29 @@ export default function HomeScreen() {
     }
   };
 
-  // Navigate home after chapter completion
+  // Calculate stars for completion
+  const calculateStars = (time: number, thresholds?: { 1: number; 2: number; 3: number }): number => {
+    if (!thresholds) return 0;
+
+    const sortedThresholds = Object.values(thresholds)
+      .map(Number)
+      .filter((val) => val > 0)
+      .sort((a, b) => a - b);
+
+    if (sortedThresholds.length >= 3) {
+      if (time <= sortedThresholds[0]) return 3;
+      if (time <= sortedThresholds[1]) return 2;
+      if (time <= sortedThresholds[2]) return 1;
+    } else if (sortedThresholds.length === 2) {
+      if (time <= sortedThresholds[0]) return 3;
+      if (time <= sortedThresholds[1]) return 2;
+    } else if (sortedThresholds.length === 1) {
+      if (time <= sortedThresholds[0]) return 3;
+    }
+    return 0;
+  };
+
+  // Show completion menu after chapter completion overlay
   useEffect(() => {
     if (!isChapterComplete) {
       return;
@@ -242,18 +348,22 @@ export default function HomeScreen() {
     // Save best time if it's a new record
     handleChapterComplete();
 
-    // Navigate home after 3 seconds
+    // Store completion data for the menu
+    setCompletionTime(timerState.elapsedTime);
+    setCompletionStars(calculateStars(timerState.elapsedTime, safeLevel.starThresholds));
+
+    // Show completion menu after 3 seconds (after the "Chapter X Complete" overlay)
     const timer = setTimeout(() => {
-      router.push("/home");
+      setShowCompletionMenu(true);
     }, 3000);
 
     return () => clearTimeout(timer);
   }, [
     isChapterComplete,
-    router,
     safeLevel.levelNumber,
     timerState.elapsedTime,
     bestTime,
+    safeLevel.starThresholds,
   ]);
 
   // Advance level when player enters open door
@@ -398,6 +508,17 @@ export default function HomeScreen() {
           />
         </TouchableOpacity>
       </View>
+
+      <ChapterCompleteMenu
+        visible={showCompletionMenu}
+        levelNumber={safeLevel.levelNumber!}
+        chapterNumber={safeLevel.chapterNumber}
+        achievedTime={completionTime}
+        starsEarned={completionStars}
+        starThresholds={safeLevel.starThresholds}
+        onPlayAgain={handlePlayAgain}
+        onContinue={handleContinue}
+      />
     </View>
   );
 }

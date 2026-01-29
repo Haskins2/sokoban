@@ -73,11 +73,18 @@ export const StarThresholdsDisplay = ({ thresholds, isVisible }: Props) => {
     );
   };
 
+  // Sort thresholds: fastest (smallest) = 3 stars, slowest (largest) = 1 star
+  const sortedTimes = Object.values(thresholds)
+    .map(Number)
+    .filter((val) => val > 0)
+    .sort((a, b) => a - b);
+
+  // Display from 3 stars (hardest/fastest) to 1 star (easiest/slowest)
   return (
     <View style={styles.container}>
-      {renderRow(1, thresholds[1])}
-      {renderRow(2, thresholds[2])}
-      {renderRow(3, thresholds[3])}
+      {sortedTimes[0] && renderRow(3, sortedTimes[0])}
+      {sortedTimes[1] && renderRow(2, sortedTimes[1])}
+      {sortedTimes[2] && renderRow(1, sortedTimes[2])}
     </View>
   );
 };

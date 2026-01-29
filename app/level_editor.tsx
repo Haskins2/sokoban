@@ -575,6 +575,18 @@ export default function LevelEditor() {
 
   const saveLevel = async (force = false) => {
     setStatusMsg("Saving...");
+
+    // Validate star times
+    const t1 = parseFloat(star1Time) || 0;
+    const t3 = parseFloat(star3Time) || 0;
+
+    if (t1 > 0 && t3 > 0 && t1 < t3) {
+      Alert.alert(
+        "Warning: Inverted Star Times",
+        `Star 1 (${t1}s) is faster than Star 3 (${t3}s). usually Star 1 is the easiest (longest time) and Star 3 is the hardest (shortest time). The game will auto-correct this, but you may want to swap them.`,
+      );
+    }
+
     if (!player) {
       setStatusMsg("Error: Place a player first!");
       Alert.alert("Error", "Level must have a player start position");

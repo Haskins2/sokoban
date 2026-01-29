@@ -1,3 +1,4 @@
+import { moderateScale, scale, spacing } from "@/constants/responsive";
 import { useUserProgress } from "@/contexts/UserProgressContext";
 import { useRouter } from "expo-router";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
@@ -11,13 +12,14 @@ import {
   View,
 } from "react-native";
 import { db } from "../firebaseConfig";
-import { scale, spacing, moderateScale } from "@/constants/responsive";
 
 export default function LevelSelect() {
   const [chapters, setChapters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { isLevelComplete } = useUserProgress();
+  const { isLevelComplete, stars } = useUserProgress();
+  const STAR_FULL = require("../assets/images/stars/star_full.png");
+  const STAR_EMPTY = require("../assets/images/stars/star_empty.png");
 
   useEffect(() => {
     fetchChapters();
@@ -69,6 +71,8 @@ export default function LevelSelect() {
       return null;
     }
 
+    const starCount = stars[chapterNum] || 0;
+
     return (
       <TouchableOpacity
         style={styles.chapterItemContainer}
@@ -80,10 +84,10 @@ export default function LevelSelect() {
           resizeMode="contain"
         />
         <View style={styles.starsContainer}>
-          {[1, 2, 3].map((star, index) => (
+          {[1, 2, 3].map((starIndex) => (
             <Image
-              key={index}
-              source={require("../assets/images/stars/star_full.png")}
+              key={starIndex}
+              source={starIndex <= starCount ? STAR_FULL : STAR_EMPTY}
               style={styles.starIcon}
               resizeMode="contain"
             />
